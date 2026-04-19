@@ -1,0 +1,5743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RedOs Public release</title>
+<link rel="icon" href="data:,">
+
+<style>
+/* GLOBAL */
+* {margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none;}
+body {height:100vh;background:black;overflow:hidden;font-family:"Segoe UI", monospace;color:var(--mainColor,#ff2a2a);}
+.bg {position:fixed;inset:0;background:radial-gradient(circle at center, rgba(255,0,0,0.10), transparent 60%), repeating-linear-gradient(0deg, rgba(255,0,0,0.05) 0px, rgba(255,0,0,0.05) 1px, transparent 1px, transparent 4px);animation:bgPulse 8s ease-in-out infinite;z-index:-1;}
+@keyframes bgPulse {0%{opacity:0.3;}50%{opacity:0.7;}100%{opacity:0.3;}}
+.desktop {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.desktop.show {display:flex;}
+.desktop.drag-target::after {
+  content:"";
+  position:absolute;
+  inset:18px 18px 88px 18px;
+  border:1px dashed rgba(255,80,80,0.42);
+  border-radius:26px;
+  box-shadow:0 0 26px rgba(255,0,0,0.1), inset 0 0 24px rgba(255,0,0,0.06);
+  pointer-events:none;
+}
+.desktop-icons {
+  position:absolute;
+  inset:20px 20px 96px 20px;
+  pointer-events:none;
+}
+.desktop-icon {
+  position:absolute;
+  width:88px;
+  min-height:88px;
+  padding:10px 8px;
+  border-radius:18px;
+  border:1px solid rgba(255,0,0,0.16);
+  background:rgba(20,0,0,0.18);
+  backdrop-filter:blur(6px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
+  pointer-events:auto;
+  cursor:pointer;
+}
+.desktop-icon:hover {
+  background:rgba(255,0,0,0.12);
+}
+.desktop-icon-badge {
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,0,0,0.18);
+  border:1px solid rgba(255,0,0,0.4);
+  font-weight:700;
+}
+.desktop-icon-label {
+  font-size:0.75rem;
+  line-height:1.2;
+}
+.desktop-ruby {
+  position:absolute;
+  width:min(34vw, 340px);
+  height:min(34vw, 340px);
+  min-width:180px;
+  min-height:180px;
+  opacity:0.28;
+  filter:saturate(1.2);
+}
+.desktop-overlay {
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at center, rgba(255,0,0,0.16), transparent 50%),
+    linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.5));
+  pointer-events:none;
+}
+.screen {position:fixed;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity 0.9s ease, transform 0.9s ease;}
+.hidden {opacity:0;pointer-events:none;transform:scale(1.08);}
+.time {font-size:4rem;letter-spacing:2px;text-shadow:0 0 12px var(--mainColor, rgba(255,0,0,0.7)),0 0 25px var(--mainColor, rgba(255,0,0,0.4)); font-weight:700;}
+.date {margin-top:10px;font-size:1.2rem;opacity:0.7;text-align:center;}
+.ruby {width:200px;height:200px;background:linear-gradient(145deg,var(--mainColor,#ff2a2a),#800000);clip-path:polygon(50% 0%,90% 25%,100% 70%,50% 100%,0% 70%,10% 25%);box-shadow:0 0 15px var(--mainColor, rgba(255,0,0,0.8)),0 0 30px var(--mainColor, rgba(255,0,0,0.5)),0 0 60px rgba(180,0,0,0.35);animation:rubyGlow 4s ease-in-out infinite;}
+@keyframes rubyGlow {0%{transform:scale(0.9);opacity:0.5;}50%{transform:scale(1);opacity:1;}100%{transform:scale(0.9);opacity:0.5;}}
+.hack {display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.hack-title {font-size:2.5rem;text-shadow:0 0 10px var(--mainColor, rgba(255,0,0,0.7));}
+.hack-box {margin-top:20px;width:60%;max-width:600px;background:rgba(0,0,0,0.6);border:1px solid var(--mainColor, rgba(255,0,0,0.5));padding:20px;color:var(--mainColor,#ff2a2a);font-size:1rem;text-align:left;height:150px;overflow:auto;}
+.cmd {margin-top:15px;width:60%;max-width:600px;display:flex;gap:10px;}
+input {flex:1;padding:10px;background:rgba(0,0,0,0.6);border:1px solid var(--mainColor, rgba(255,0,0,0.5));color:var(--mainColor,#ff2a2a);font-size:16px;}
+button {padding:10px 14px;background:rgba(255,0,0,0.2);border:1px solid var(--mainColor, rgba(255,0,0,0.6));color:var(--mainColor,#ff2a2a);cursor:pointer;border-radius:8px;}
+.loading {margin-top:20px;width:60%;max-width:600px;height:10px;background:rgba(255,0,0,0.2);border-radius:5px;overflow:hidden;}
+.loading .fill {height:100%;width:0%;background:var(--mainColor, rgba(255,0,0,0.8));transition:width 0.3s ease;}
+.binary {position:absolute;inset:0;color:rgba(255,0,0,0.25);font-size:12px;overflow:hidden;pointer-events:none;}
+.binary span {position:absolute;top:-100px;animation:fall 8s linear infinite;}
+@keyframes fall {to{transform:translateY(110vh);}}
+.taskbar {position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:min(94%, 980px);height:62px;background:rgba(22,8,8,0.58);border-radius:20px;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:0 14px;border:1px solid rgba(255,0,0,0.24);backdrop-filter:blur(10px);box-shadow:0 0 30px rgba(0,0,0,0.3), inset 0 0 24px rgba(255,0,0,0.04);opacity:0;pointer-events:none;transition:opacity 0.8s ease;}
+.taskbar.show {opacity:1;pointer-events:auto;}
+.taskbar-left,
+.taskbar-center,
+.taskbar-right {
+  display:flex;
+  align-items:center;
+}
+.taskbar-left,
+.taskbar-right {
+  min-width:180px;
+}
+.taskbar-right {
+  justify-content:flex-end;
+  gap:10px;
+}
+.taskbar-center {
+  justify-content:center;
+  flex:1;
+  gap:10px;
+}
+.icon {width:38px;height:38px;background:rgba(255,0,0,0.18);border:1px solid rgba(255,0,0,0.4);border-radius:12px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:0.06em;overflow:visible;}
+.icon:hover {background:rgba(255,0,0,0.12);}
+.icon-orbit-dot {
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:6px;
+  height:6px;
+  margin:-3px 0 0 -3px;
+  border-radius:50%;
+  background:rgba(255,70,70,0.88);
+  box-shadow:0 0 10px rgba(255,0,0,0.42);
+  opacity:0;
+  pointer-events:none;
+  transform:translate(14px, -14px);
+  transition:opacity 0.18s ease;
+}
+.taskbar-app.running .icon-orbit-dot,
+.taskbar-mini.active .icon-orbit-dot {
+  opacity:1;
+}
+.taskbar-app.active .icon-orbit-dot {
+  background:var(--mainColor, rgba(255,0,0,0.95));
+  box-shadow:0 0 14px rgba(255,0,0,0.6);
+}
+.taskbar-mini {
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  font-size:0.78rem;
+}
+.icon.drag-origin,
+.startApp.drag-origin {
+  opacity:0.35;
+}
+.drag-ghost {
+  position:fixed;
+  pointer-events:none;
+  z-index:5000;
+  opacity:0.95;
+  box-shadow:0 16px 40px rgba(0,0,0,0.35);
+}
+.drag-toast {
+  position:fixed;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%) translateY(-14px) scale(0.96);
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:320px;
+  max-width:430px;
+  padding:3px;
+  border-radius:24px;
+  background:rgba(255,40,20,0.08);
+  box-shadow:0 20px 44px rgba(0,0,0,0.42), 0 0 22px rgba(255,50,30,0.2);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.28s ease, transform 0.28s ease;
+  z-index:6000;
+  overflow:hidden;
+}
+.drag-toast.show {
+  opacity:1;
+  transform:translateX(-50%) translateY(0) scale(1);
+}
+.drag-toast.hide {
+  opacity:1;
+  transform:translateX(-50%) translateY(0) scale(1);
+}
+.drag-toast-border {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  overflow:visible;
+  filter:drop-shadow(0 0 12px rgba(120,10,14,0.75)) drop-shadow(0 0 22px rgba(255,40,20,0.3));
+}
+.drag-toast.show .drag-toast-trace {
+  animation:portalBuild 0.95s linear forwards;
+}
+.drag-toast.show .drag-toast-glow {
+  animation:portalGlowBuild 1.1s linear forwards, portalPulse 1.8s ease-in-out 1.1s infinite;
+}
+.drag-toast.show .drag-toast-shadow {
+  animation:portalShadowBuild 1.1s linear forwards, portalShadowSpin 1.25s linear 1.1s infinite;
+}
+.drag-toast.hide .drag-toast-trace {
+  animation:portalCollapse 0.9s linear forwards;
+}
+.drag-toast.hide .drag-toast-glow {
+  animation:portalGlowCollapse 0.95s linear forwards;
+}
+.drag-toast.hide .drag-toast-shadow {
+  animation:portalShadowCollapse 1s linear forwards;
+}
+.drag-toast.show .drag-toast-spark {
+  animation:portalSparkIn 0.55s ease forwards, portalSparkPulse 1.3s ease-in-out 0.6s infinite;
+}
+.drag-toast.hide .drag-toast-spark {
+  animation:portalSparkOut 0.7s ease forwards;
+}
+.drag-toast.hide .drag-toast-inner {
+  animation:portalInnerCollapse 0.95s ease forwards;
+}
+.drag-toast-inner {
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  padding:13px 18px;
+  border-radius:21px;
+  background:linear-gradient(180deg, rgba(22,0,0,0.97), rgba(7,0,0,0.95));
+  min-height:58px;
+}
+.drag-toast-sigil {
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:2px solid rgba(255,70,50,0.95);
+  box-shadow:0 0 14px rgba(255,55,35,0.5), inset 0 0 10px rgba(255,35,20,0.34);
+  flex-shrink:0;
+  position:relative;
+  overflow:hidden;
+}
+.drag-toast-sigil::before,
+.drag-toast-sigil::after {
+  content:"";
+  position:absolute;
+  inset:5px;
+  border-radius:50%;
+  border:1px solid rgba(255,70,50,0.66);
+}
+.drag-toast-sigil::after {
+  inset:11px;
+  border-color:rgba(255,120,100,0.9);
+}
+.drag-toast-sigil-ring {
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(90,8,12,0.08), rgba(110,12,16,0.95), rgba(90,8,12,0.12), rgba(125,18,22,0.9), rgba(90,8,12,0.08));
+  filter:blur(0.4px);
+  opacity:0;
+}
+.drag-toast.show .drag-toast-sigil-ring {
+  opacity:0.95;
+  animation:sigilSpin 1.1s linear infinite;
+}
+.drag-toast.hide .drag-toast-sigil-ring {
+  opacity:0.75;
+  animation:sigilSpinReverse 0.8s linear forwards;
+}
+.drag-toast strong {
+  display:block;
+  margin-bottom:3px;
+}
+.drag-toast span {
+  font-size:0.82rem;
+  opacity:0.72;
+}
+@keyframes portalSpin {
+  to { transform:rotate(360deg); }
+}
+@keyframes portalBuild {
+  0% {
+    stroke-dasharray:6 394;
+    stroke-dashoffset:0;
+    stroke-opacity:0.24;
+  }
+  18% {
+    stroke-dasharray:42 358;
+    stroke-dashoffset:0;
+    stroke-opacity:0.72;
+  }
+  42% {
+    stroke-dasharray:126 274;
+    stroke-dashoffset:0;
+    stroke-opacity:1;
+  }
+  68% {
+    stroke-dasharray:250 150;
+    stroke-dashoffset:0;
+    stroke-opacity:1;
+  }
+  100% {
+    stroke-dasharray:400 0;
+    stroke-dashoffset:0;
+    stroke-opacity:1;
+  }
+}
+@keyframes portalGlowBuild {
+  0% {
+    stroke-dasharray:6 394;
+    stroke-opacity:0.1;
+  }
+  100% {
+    stroke-dasharray:400 0;
+    stroke-opacity:0.92;
+  }
+}
+@keyframes portalShadowBuild {
+  0% {
+    stroke-dasharray:6 394;
+    stroke-opacity:0.08;
+    stroke-dashoffset:0;
+  }
+  100% {
+    stroke-dasharray:34 14 18 10 12 18;
+    stroke-dashoffset:-10;
+    stroke-opacity:0.98;
+  }
+}
+@keyframes portalPulse {
+  0%, 100% {
+    filter:drop-shadow(0 0 10px rgba(255,35,20,0.55)) drop-shadow(0 0 18px rgba(255,70,40,0.35));
+  }
+  50% {
+    filter:drop-shadow(0 0 14px rgba(255,30,20,0.9)) drop-shadow(0 0 28px rgba(255,60,40,0.5));
+  }
+}
+@keyframes portalShadowSpin {
+  from {
+    stroke-dashoffset:0;
+  }
+  to {
+    stroke-dashoffset:-220;
+  }
+}
+@keyframes portalCollapse {
+  0% {
+    stroke-dasharray:400 0;
+    stroke-opacity:1;
+  }
+  100% {
+    stroke-dasharray:6 394;
+    stroke-opacity:0.12;
+  }
+}
+@keyframes portalGlowCollapse {
+  0% {
+    stroke-dasharray:400 0;
+    stroke-opacity:0.92;
+  }
+  100% {
+    stroke-dasharray:6 394;
+    stroke-opacity:0.08;
+  }
+}
+@keyframes portalShadowCollapse {
+  0% {
+    stroke-dasharray:34 14 18 10 12 18;
+    stroke-dashoffset:-220;
+    stroke-opacity:0.98;
+  }
+  100% {
+    stroke-dasharray:6 394;
+    stroke-opacity:0.04;
+    stroke-dashoffset:-180;
+  }
+}
+@keyframes portalSparkIn {
+  0% { opacity:0; transform:scale(0.4); }
+  100% { opacity:0.95; transform:scale(1); }
+}
+@keyframes portalSparkPulse {
+  0%,100% { opacity:0.45; }
+  50% { opacity:1; }
+}
+@keyframes portalSparkOut {
+  0% { opacity:0.9; transform:scale(1); }
+  100% { opacity:0; transform:scale(0.35); }
+}
+@keyframes portalInnerCollapse {
+  0% {
+    opacity:1;
+    transform:scale(1);
+  }
+  100% {
+    opacity:0.78;
+    transform:scale(0.985);
+  }
+}
+@keyframes sigilSpin {
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
+}
+@keyframes sigilSpinReverse {
+  from { transform:rotate(0deg); opacity:0.75; }
+  to { transform:rotate(-180deg); opacity:0; }
+}
+.start-icon {
+  width:auto;
+  min-width:84px;
+  padding:0 16px;
+  text-transform:uppercase;
+  font-size:0.82rem;
+}
+.app {position:fixed;width:60%;height:60%;background:rgba(0,0,0,0.7);border:1px solid var(--mainColor, rgba(255,0,0,0.5));border-radius:10px;top:20%;left:20%;display:none;flex-direction:column;z-index:999;}
+.app-header {padding:10px;background:rgba(255,0,0,0.1);border-bottom:1px solid var(--mainColor, rgba(255,0,0,0.4));display:flex;justify-content:space-between;align-items:center;}
+.app-header .title {font-size:14px;}
+.window-actions {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.window-btn,
+.close {cursor:pointer;padding:5px 10px;border:1px solid var(--mainColor, rgba(255,0,0,0.5));background:rgba(0,0,0,0.4);border-radius:5px;}
+.window-btn {
+  min-width:30px;
+  text-align:center;
+  padding:5px 8px;
+}
+.app-body {padding:15px;overflow:auto;flex:1;}
+.app-body.calendar-body {padding:18px;}
+.app.maximized {
+  top:3% !important;
+  left:3% !important;
+  width:94% !important;
+  height:88% !important;
+}
+.app.minimized {
+  display:none !important;
+}
+.panel-window {
+  background:linear-gradient(180deg, rgba(10,0,0,0.92), rgba(0,0,0,0.82));
+  box-shadow:0 24px 60px rgba(0,0,0,0.42), inset 0 0 24px rgba(255,0,0,0.05);
+}
+.panel-window .hack-box,
+.panel-window .cmd,
+.panel-window .loading {
+  width:100%;
+  max-width:none;
+}
+.panel-window .hack-box {
+  margin-top:0;
+  height:auto;
+  min-height:150px;
+}
+.panel-window .hack {
+  align-items:stretch;
+  justify-content:flex-start;
+  height:100%;
+}
+.panel-window .binary {
+  border-radius:0 0 10px 10px;
+}
+.terminal-help {
+  margin-top:14px;
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:12px;
+  background:rgba(255,0,0,0.06);
+  padding:12px;
+}
+.terminal-help b {
+  display:block;
+  margin-bottom:8px;
+}
+.terminal-help-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+  font-size:0.84rem;
+  opacity:0.82;
+}
+.setting {margin:10px 0;}
+.startMenu {position:fixed;bottom:84px;left:20px;width:min(360px, calc(100vw - 40px));max-height:min(78vh, 760px);background:linear-gradient(180deg, rgba(24,0,0,0.92), rgba(4,0,0,0.92));border:1px solid rgba(255,0,0,0.32);border-radius:22px;display:none;flex-direction:column;z-index:1000;backdrop-filter:blur(14px);box-shadow:0 22px 60px rgba(0,0,0,0.4);overflow:hidden;}
+.startHeader {padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,0,0,0.18);}
+.avatar {width:40px;height:40px;border-radius:50%;background:#800;}
+.username {color:var(--mainColor,#ff2a2a);font-weight:700;}
+.startTagline {
+  font-size:0.8rem;
+  opacity:0.65;
+}
+.startSearch {
+  padding:0 16px 16px;
+}
+.startSearch input {
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+}
+.startApps {
+  padding:16px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+  overflow:auto;
+  flex:1;
+  min-height:0;
+}
+.startApps::-webkit-scrollbar {
+  width:10px;
+}
+.startApps::-webkit-scrollbar-thumb {
+  background:linear-gradient(180deg, rgba(255,80,80,0.45), rgba(120,0,0,0.8));
+  border-radius:999px;
+}
+.startApps::-webkit-scrollbar-track {
+  background:rgba(255,0,0,0.06);
+}
+.startApp {
+  padding:12px;
+  background:linear-gradient(180deg, rgba(255,0,0,0.14), rgba(255,0,0,0.05));
+  border:1px solid rgba(255,0,0,0.16);
+  border-radius:14px;
+  cursor:pointer;
+  min-height:72px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.startApp strong {
+  font-size:0.95rem;
+}
+.startApp span {
+  font-size:0.76rem;
+  opacity:0.68;
+}
+.startApp.hidden-app {
+  display:none;
+}
+.role-badge {
+  margin-top:6px;
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:rgba(255,0,0,0.08);
+  font-size:0.72rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+}
+.role-note {
+  margin-top:8px;
+  font-size:0.78rem;
+  opacity:0.68;
+}
+.startPower {padding:14px 16px;border-top:1px solid rgba(255,0,0,0.18);display:flex;justify-content:space-between;gap:8px;}
+.startPower button {flex:1;margin:0 5px;}
+.reset-btn {
+  width:100%;
+  margin-top:14px;
+}
+.taskTime {
+  font-size:12px;
+  opacity:0.95;
+  font-weight:700;
+  background:rgba(255,0,0,0.12);
+  padding:6px 10px;
+  border-radius:10px;
+  text-align:right;
+  line-height:1.2;
+  border:1px solid rgba(255,0,0,0.14);
+}
+.notifications {
+  position:fixed;
+  top:86px;
+  right:18px;
+  width:min(320px, calc(100vw - 24px));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  z-index:6500;
+  pointer-events:none;
+}
+.notification {
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid rgba(255,0,0,0.24);
+  background:linear-gradient(180deg, rgba(24,0,0,0.94), rgba(8,0,0,0.92));
+  box-shadow:0 16px 36px rgba(0,0,0,0.34);
+  transform:translateY(-10px);
+  opacity:0;
+  transition:opacity 0.25s ease, transform 0.25s ease;
+  position:relative;
+  overflow:hidden;
+}
+.notification::before {
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:linear-gradient(180deg, #ff6248, #8e1116);
+}
+.notification.show {
+  opacity:1;
+  transform:translateY(0);
+}
+.notification strong {
+  display:block;
+  margin-bottom:3px;
+}
+.notification span {
+  font-size:0.82rem;
+  opacity:0.78;
+}
+.notification-center {
+  position:fixed;
+  right:18px;
+  bottom:84px;
+  width:min(340px, calc(100vw - 24px));
+  max-height:min(66vh, 560px);
+  border-radius:20px;
+  border:1px solid rgba(255,0,0,0.24);
+  background:linear-gradient(180deg, rgba(24,0,0,0.96), rgba(8,0,0,0.94));
+  box-shadow:0 20px 50px rgba(0,0,0,0.42);
+  backdrop-filter:blur(14px);
+  display:none;
+  flex-direction:column;
+  z-index:6400;
+  overflow:hidden;
+}
+.notification-center.show {
+  display:flex;
+}
+.notification-center-head {
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid rgba(255,0,0,0.14);
+}
+.notification-center-list {
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+}
+.notification-history {
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.16);
+  background:rgba(255,0,0,0.06);
+}
+.notification-history strong,
+.notification-history span {
+  display:block;
+}
+.notification-history small {
+  display:block;
+  opacity:0.58;
+  margin-top:6px;
+}
+.profile-editor-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+.profile-editor-grid .setting {
+  margin:0;
+}
+.profile-editor-grid textarea,
+.profile-editor-grid input,
+.profile-editor-grid select {
+  width:100%;
+}
+.profile-bio {
+  min-height:84px;
+  resize:none;
+}
+.bookmark-row {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.bookmark-pill {
+  padding:7px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:rgba(255,0,0,0.08);
+  cursor:pointer;
+  font-size:0.78rem;
+}
+.browser-tabs {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.browser-tab {
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,0,0,0.16);
+  background:rgba(255,0,0,0.08);
+  cursor:pointer;
+}
+.browser-tab.active {
+  background:rgba(255,0,0,0.18);
+  border-color:rgba(255,90,90,0.72);
+}
+.event-overlay {
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(circle at center, rgba(255,0,0,0.12), transparent 45%),
+    repeating-linear-gradient(0deg, rgba(255,0,0,0.06) 0px, rgba(255,0,0,0.06) 1px, transparent 1px, transparent 5px);
+  z-index:6300;
+}
+.event-overlay.flash {
+  animation:eventFlash 0.5s ease;
+}
+@keyframes eventFlash {
+  0% { opacity:0; }
+  35% { opacity:1; }
+  100% { opacity:0; }
+}
+.window-snap-left,
+.window-snap-right {
+  width:50% !important;
+  height:88% !important;
+  top:6% !important;
+}
+.window-snap-left {
+  left:2% !important;
+}
+.window-snap-right {
+  left:48% !important;
+}
+.task-switcher {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.38);
+  backdrop-filter:blur(6px);
+  z-index:6800;
+}
+.task-switcher.show {
+  display:flex;
+}
+.task-switcher-grid {
+  width:min(780px, calc(100vw - 40px));
+  max-height:min(70vh, 560px);
+  padding:18px;
+  border-radius:24px;
+  border:1px solid rgba(255,0,0,0.22);
+  background:linear-gradient(180deg, rgba(22,0,0,0.94), rgba(8,0,0,0.92));
+  box-shadow:0 24px 60px rgba(0,0,0,0.46);
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+.task-switcher-card {
+  padding:16px;
+  border-radius:18px;
+  border:1px solid rgba(255,0,0,0.14);
+  background:rgba(255,0,0,0.06);
+}
+.task-switcher-card.active {
+  border-color:rgba(255,90,90,0.78);
+  background:linear-gradient(180deg, rgba(255,0,0,0.18), rgba(24,0,0,0.84));
+  box-shadow:0 0 20px rgba(255,0,0,0.12);
+}
+.task-switcher-card strong,
+.task-switcher-card span {
+  display:block;
+}
+.task-switcher-card span {
+  margin-top:6px;
+  font-size:0.8rem;
+  opacity:0.74;
+}
+.diagnostics-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+.diagnostics-card {
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.2);
+  background:rgba(255,0,0,0.08);
+}
+.diagnostics-card strong {
+  display:block;
+  margin-bottom:6px;
+}
+.diagnostics-card span {
+  font-size:0.84rem;
+  opacity:0.82;
+  white-space:pre-line;
+}
+.notes-shell {
+  display:grid;
+  grid-template-columns:240px minmax(0, 1fr);
+  gap:16px;
+  height:100%;
+}
+.notes-sidebar,
+.notes-editor {
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(24,0,0,0.78), rgba(4,0,0,0.72));
+  box-shadow:inset 0 0 18px rgba(255,0,0,0.04);
+}
+.notes-sidebar {
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.notes-sidebar-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.notes-sidebar-head strong {
+  font-size:1rem;
+}
+.notes-sidebar-head span {
+  font-size:0.76rem;
+  opacity:0.68;
+}
+.notes-actions {
+  display:flex;
+  gap:8px;
+}
+.notes-actions button {
+  flex:1;
+  padding:9px 10px;
+}
+.notes-list {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  overflow:auto;
+  padding-right:2px;
+}
+.notes-item {
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.14);
+  background:rgba(255,0,0,0.06);
+  cursor:pointer;
+  transition:background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.notes-item:hover {
+  background:rgba(255,0,0,0.1);
+  transform:translateY(-1px);
+}
+.notes-item.active {
+  border-color:rgba(255,90,90,0.82);
+  background:linear-gradient(180deg, rgba(255,0,0,0.2), rgba(32,0,0,0.85));
+  box-shadow:0 0 18px rgba(255,0,0,0.12);
+}
+.notes-item strong,
+.notes-item span {
+  display:block;
+}
+.notes-item strong {
+  margin-bottom:4px;
+}
+.notes-item span {
+  font-size:0.78rem;
+  opacity:0.68;
+}
+.notes-editor {
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.notes-title-input {
+  width:100%;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.2);
+  background:rgba(255,0,0,0.05);
+  color:var(--mainColor,#ff2a2a);
+  font-size:1.05rem;
+  font-weight:700;
+}
+.notes-editor textarea {
+  flex:1;
+  min-height:240px;
+  resize:none;
+  width:100%;
+  padding:16px;
+  border-radius:16px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:rgba(0,0,0,0.42);
+  color:var(--mainColor,#ff2a2a);
+  font:inherit;
+  line-height:1.55;
+}
+.notes-editor-meta {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  font-size:0.8rem;
+  opacity:0.74;
+}
+.notes-empty {
+  padding:16px;
+  border-radius:14px;
+  border:1px dashed rgba(255,0,0,0.16);
+  text-align:center;
+  opacity:0.72;
+}
+.browser-shell,
+.store-shell,
+.missions-shell,
+.archive-shell {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  height:100%;
+}
+.browser-toolbar,
+.paint-toolbar,
+.music-controls,
+.store-header,
+.missions-head,
+.archive-head,
+.control-grid {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.browser-toolbar input,
+.paint-toolbar input {
+  min-width:220px;
+}
+.browser-view,
+.store-grid,
+.missions-list,
+.archive-grid {
+  flex:1;
+  overflow:auto;
+}
+.browser-view {
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:18px;
+  padding:18px;
+  background:linear-gradient(180deg, rgba(18,0,0,0.78), rgba(5,0,0,0.74));
+}
+.browser-hero,
+.archive-card,
+.store-card,
+.mission-card,
+.control-tile,
+.music-panel {
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(255,0,0,0.12), rgba(18,0,0,0.78));
+  padding:16px;
+}
+.browser-grid,
+.store-grid,
+.archive-grid,
+.control-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+.browser-grid {
+  margin-top:14px;
+}
+.browser-hero strong,
+.store-card strong,
+.archive-card strong,
+.mission-card strong,
+.control-tile strong,
+.music-panel strong {
+  display:block;
+  margin-bottom:6px;
+}
+.browser-hero p,
+.store-card span,
+.archive-card span,
+.mission-card span,
+.control-tile span,
+.music-panel span {
+  display:block;
+  font-size:0.84rem;
+  opacity:0.76;
+  line-height:1.5;
+}
+.browser-links {
+  margin-top:14px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.browser-links button {
+  padding:8px 12px;
+}
+.music-shell {
+  display:grid;
+  grid-template-columns:280px minmax(0, 1fr);
+  gap:16px;
+  height:100%;
+}
+.music-queue {
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:18px;
+  padding:14px;
+  background:linear-gradient(180deg, rgba(16,0,0,0.84), rgba(4,0,0,0.76));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+}
+.music-track {
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.12);
+  background:rgba(255,0,0,0.05);
+  cursor:pointer;
+}
+.music-track.active {
+  border-color:rgba(255,90,90,0.7);
+  background:linear-gradient(180deg, rgba(255,0,0,0.18), rgba(34,0,0,0.82));
+}
+.music-stage {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.music-visualizer {
+  height:160px;
+  border-radius:18px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:radial-gradient(circle at center, rgba(255,0,0,0.14), rgba(0,0,0,0.72));
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  gap:8px;
+  padding:18px;
+  overflow:hidden;
+}
+.music-bar {
+  width:12px;
+  border-radius:999px 999px 4px 4px;
+  background:linear-gradient(180deg, rgba(255,120,120,0.95), rgba(120,0,0,0.8));
+  animation:musicPulse 1.2s ease-in-out infinite;
+  transform-origin:bottom;
+}
+@keyframes musicPulse {
+  0%, 100% { transform:scaleY(0.35); opacity:0.45; }
+  50% { transform:scaleY(1); opacity:1; }
+}
+.paint-shell {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  height:100%;
+}
+.paint-toolbar {
+  justify-content:space-between;
+}
+.paint-board {
+  flex:1;
+  border-radius:18px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:#120000;
+  position:relative;
+  overflow:hidden;
+}
+#paintCanvas {
+  width:100%;
+  height:100%;
+  display:block;
+  background:linear-gradient(180deg, rgba(255,250,250,0.98), rgba(255,236,236,0.98));
+  cursor:crosshair;
+}
+.store-card button,
+.mission-card button,
+.control-tile button,
+.archive-card button {
+  margin-top:12px;
+}
+.mission-card.done {
+  border-color:rgba(90,255,150,0.28);
+  background:linear-gradient(180deg, rgba(50,180,90,0.14), rgba(8,24,10,0.82));
+}
+.control-grid {
+  display:grid;
+}
+.control-tile {
+  min-height:140px;
+}
+.control-tile button.active {
+  background:rgba(255,70,70,0.3);
+  box-shadow:0 0 18px rgba(255,0,0,0.18);
+}
+.archive-grid {
+  align-content:start;
+}
+.archive-card pre {
+  margin-top:12px;
+  white-space:pre-wrap;
+  font:inherit;
+  font-size:0.82rem;
+  opacity:0.76;
+}
+.calculator-shell {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr);
+  gap:14px;
+  height:100%;
+}
+.calculator-display {
+  padding:20px;
+  border-radius:18px;
+  border:1px solid rgba(255,0,0,0.18);
+  background:linear-gradient(180deg, rgba(26,0,0,0.9), rgba(6,0,0,0.78));
+  text-align:right;
+}
+.calculator-display strong {
+  display:block;
+  font-size:2rem;
+  margin-bottom:6px;
+}
+.calculator-display span {
+  font-size:0.82rem;
+  opacity:0.66;
+}
+.calculator-grid {
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
+}
+.calculator-grid button {
+  min-height:56px;
+  font-size:1rem;
+}
+.gallery-shell {
+  display:grid;
+  grid-template-columns:280px minmax(0, 1fr);
+  gap:16px;
+  height:100%;
+}
+.gallery-sidebar,
+.gallery-view {
+  border:1px solid rgba(255,0,0,0.18);
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(18,0,0,0.84), rgba(5,0,0,0.76));
+  padding:14px;
+}
+.gallery-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+  max-height:100%;
+}
+.gallery-item {
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,0,0,0.14);
+  background:rgba(255,0,0,0.06);
+  cursor:pointer;
+}
+.gallery-item.active {
+  border-color:rgba(255,90,90,0.82);
+  background:linear-gradient(180deg, rgba(255,0,0,0.2), rgba(32,0,0,0.85));
+}
+.gallery-preview {
+  width:100%;
+  max-height:100%;
+  object-fit:contain;
+  border-radius:16px;
+  border:1px solid rgba(255,0,0,0.14);
+  background:rgba(0,0,0,0.25);
+}
+.gallery-view-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+  flex-wrap:wrap;
+}
+.gallery-view-head strong {
+  display:block;
+}
+.gallery-view-head span {
+  display:block;
+  font-size:0.82rem;
+  opacity:0.7;
+  margin-top:4px;
+}
+.gallery-empty {
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  opacity:0.7;
+}
+.context-menu {
+  position:fixed;
+  min-width:190px;
+  padding:8px;
+  border-radius:16px;
+  border:1px solid rgba(255,0,0,0.24);
+  background:linear-gradient(180deg, rgba(24,0,0,0.96), rgba(8,0,0,0.94));
+  box-shadow:0 18px 44px rgba(0,0,0,0.42);
+  z-index:7000;
+  display:none;
+}
+.context-menu.show {
+  display:block;
+}
+.context-menu button {
+  width:100%;
+  display:block;
+  margin:0;
+  padding:10px 12px;
+  border:none;
+  border-radius:12px;
+  background:transparent;
+  color:var(--mainColor,#ff2a2a);
+  text-align:left;
+}
+.context-menu button:hover {
+  background:rgba(255,0,0,0.12);
+}
+.context-menu hr {
+  border:none;
+  height:1px;
+  margin:6px 0;
+  background:rgba(255,0,0,0.16);
+}
+#fileList .file-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px;
+  border-radius:10px;
+}
+#fileList .file-row:hover {
+  background:rgba(255,0,0,0.12);
+}
+#fileList .file-name {
+  flex:1;
+  cursor:pointer;
+}
+#fileList .file-actions {
+  display:flex;
+  gap:6px;
+}
+#fileList .file-actions button {
+  padding:6px 9px;
+}
+.lock-profile {
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  opacity:0.88;
+}
+.lock-avatar {
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:#800;
+  border:1px solid rgba(255,0,0,0.32);
+}
+.lock-meta strong {
+  display:block;
+}
+.lock-meta span {
+  font-size:0.8rem;
+  opacity:0.72;
+}
+.account-select {
+  width:100%;
+  margin-bottom:10px;
+}
+
+#fileList div {
+  padding:6px;
+  cursor:pointer;
+}
+#fileList div:hover {
+  background:rgba(255,0,0,0.15);
+}
+
+.calendar-shell {
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  height:100%;
+}
+
+.calendar-topbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.calendar-title-wrap {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.calendar-title {
+  font-size:1.4rem;
+  font-weight:700;
+  text-shadow:0 0 10px rgba(255,0,0,0.35);
+}
+
+.calendar-subtitle {
+  font-size:0.9rem;
+  opacity:0.72;
+}
+
+.calendar-controls {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.calendar-btn {
+  min-width:42px;
+  font-weight:700;
+}
+
+.calendar-grid {
+  display:grid;
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+  gap:10px;
+}
+
+.calendar-weekday,
+.calendar-day {
+  border:1px solid rgba(255,0,0,0.22);
+  border-radius:12px;
+  background:linear-gradient(180deg, rgba(255,0,0,0.12), rgba(0,0,0,0.45));
+}
+
+.calendar-weekday {
+  padding:10px 8px;
+  text-align:center;
+  font-size:0.82rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  opacity:0.85;
+}
+
+.calendar-day {
+  min-height:86px;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  box-shadow:inset 0 0 18px rgba(255,0,0,0.04);
+}
+
+.calendar-day.other-month {
+  opacity:0.33;
+}
+
+.calendar-day.current-day {
+  border-color:rgba(255,0,0,0.8);
+  box-shadow:0 0 18px rgba(255,0,0,0.18), inset 0 0 24px rgba(255,0,0,0.07);
+}
+
+.calendar-day.selected-day {
+  background:linear-gradient(180deg, rgba(255,0,0,0.24), rgba(20,0,0,0.82));
+  border-color:rgba(255,80,80,0.9);
+}
+
+.calendar-day-number {
+  font-size:1.1rem;
+  font-weight:700;
+}
+
+.calendar-day-label {
+  font-size:0.75rem;
+  opacity:0.7;
+}
+
+.calendar-status {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  border:1px solid rgba(255,0,0,0.22);
+  border-radius:14px;
+  background:rgba(255,0,0,0.08);
+  padding:12px 14px;
+}
+
+.calendar-status strong {
+  display:block;
+  margin-bottom:4px;
+}
+
+@media (max-width: 900px) {
+  .app {
+    width:88%;
+    left:6%;
+  }
+
+  .taskbar {
+    width:calc(100% - 20px);
+  }
+
+  .taskbar-left,
+  .taskbar-right {
+    min-width:auto;
+  }
+
+  .calendar-day {
+    min-height:72px;
+    padding:8px;
+  }
+
+  .notes-shell {
+    grid-template-columns:1fr;
+  }
+
+  .music-shell,
+  .gallery-shell,
+  .browser-grid,
+  .store-grid,
+  .archive-grid,
+  .control-grid,
+  .task-switcher-grid {
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-grid {
+    gap:6px;
+  }
+
+  .taskbar {
+    gap:8px;
+    padding:0 10px;
+  }
+
+  .startMenu {
+    left:10px;
+    bottom:86px;
+    width:calc(100vw - 20px);
+  }
+
+  .drag-toast {
+    top:16px;
+    left:50%;
+    min-width:0;
+    width:calc(100vw - 20px);
+    max-width:440px;
+  }
+
+  .startApps {
+    grid-template-columns:1fr;
+  }
+
+  .calendar-weekday {
+    padding:8px 4px;
+    font-size:0.7rem;
+  }
+
+  .calendar-day {
+    min-height:58px;
+  }
+
+  .calendar-day-label {
+    display:none;
+  }
+}
+
+
+
+
+.shutdown-container{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+
+.shutdown-loader{
+  position:relative;
+  width:70vw;
+  max-width:920px;
+  min-width:260px;
+  height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.shutdown-spinner{
+  width:80px;
+  height:80px;
+  border:4px solid rgba(255,0,0,0.2);
+  border-top:4px solid var(--mainColor,#ff2a2a);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+.shutdown-sparks{
+  position:absolute;
+  inset:0;
+  display:block;
+  pointer-events:none;
+  overflow:visible;
+}
+
+.shutdown-spark{
+  position:absolute;
+  width:28px;
+  height:4px;
+  border-radius:999px;
+  background:
+    linear-gradient(90deg, rgba(255,180,130,0.95) 0%, rgba(255,80,40,0.96) 20%, rgba(90,8,12,0.92) 55%, rgba(90,8,12,0) 100%),
+    repeating-linear-gradient(90deg, rgba(255,220,180,0.34) 0 4px, rgba(255,120,70,0.05) 4px 8px);
+  box-shadow:0 0 8px rgba(255,90,50,0.85), 0 0 16px rgba(255,40,20,0.28);
+  opacity:0;
+  transform-origin:center;
+}
+
+.shutdown-spark.left{
+  background:
+    linear-gradient(270deg, rgba(255,180,130,0.95) 0%, rgba(255,80,40,0.96) 20%, rgba(90,8,12,0.92) 55%, rgba(90,8,12,0) 100%),
+    repeating-linear-gradient(270deg, rgba(255,220,180,0.34) 0 8px, rgba(255,120,70,0.05) 8px 14px);
+}
+
+.shutdown-spark:nth-child(1){ top:30px; left:40px; animation:shutdownBeamLeft 1.45s linear infinite; animation-delay:0s; }
+.shutdown-spark:nth-child(2){ top:48px; left:52px; animation:shutdownBeamLeftWide 1.6s linear infinite; animation-delay:0.16s; }
+.shutdown-spark:nth-child(3){ top:66px; left:34px; animation:shutdownBeamLeft 1.5s linear infinite; animation-delay:0.32s; }
+.shutdown-spark:nth-child(4){ top:84px; left:60px; animation:shutdownBeamLeftWide 1.7s linear infinite; animation-delay:0.48s; }
+.shutdown-spark:nth-child(5){ top:102px; left:42px; animation:shutdownBeamLeft 1.55s linear infinite; animation-delay:0.64s; }
+.shutdown-spark:nth-child(6){ top:120px; left:58px; animation:shutdownBeamLeftWide 1.75s linear infinite; animation-delay:0.8s; }
+.shutdown-spark:nth-child(7){ top:138px; left:36px; animation:shutdownBeamLeft 1.52s linear infinite; animation-delay:0.96s; }
+.shutdown-spark:nth-child(8){ top:156px; left:64px; animation:shutdownBeamLeftWide 1.8s linear infinite; animation-delay:1.12s; }
+.shutdown-spark:nth-child(9){ top:30px; right:40px; animation:shutdownBeamRight 1.45s linear infinite; animation-delay:0.08s; }
+.shutdown-spark:nth-child(10){ top:48px; right:52px; animation:shutdownBeamRightWide 1.6s linear infinite; animation-delay:0.24s; }
+.shutdown-spark:nth-child(11){ top:66px; right:34px; animation:shutdownBeamRight 1.5s linear infinite; animation-delay:0.4s; }
+.shutdown-spark:nth-child(12){ top:84px; right:60px; animation:shutdownBeamRightWide 1.7s linear infinite; animation-delay:0.56s; }
+.shutdown-spark:nth-child(13){ top:102px; right:42px; animation:shutdownBeamRight 1.55s linear infinite; animation-delay:0.72s; }
+.shutdown-spark:nth-child(14){ top:120px; right:58px; animation:shutdownBeamRightWide 1.75s linear infinite; animation-delay:0.88s; }
+.shutdown-spark:nth-child(15){ top:138px; right:36px; animation:shutdownBeamRight 1.52s linear infinite; animation-delay:1.04s; }
+.shutdown-spark:nth-child(16){ top:156px; right:64px; animation:shutdownBeamRightWide 1.8s linear infinite; animation-delay:1.2s; }
+
+.shutdown-text{
+  margin-top:20px;
+  color:var(--mainColor,#ff2a2a);
+  font-size:1.2rem;
+  letter-spacing:1px;
+  animation:pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin{
+  to{ transform:rotate(360deg); }
+}
+
+@keyframes pulse{
+  0%,100%{ opacity:0.4; }
+  50%{ opacity:1; }
+}
+
+@keyframes shutdownBeamLeft{
+  0%{
+    opacity:0;
+    transform:translateX(0) scaleX(0.35);
+  }
+  12%{
+    opacity:1;
+  }
+  60%{
+    opacity:1;
+    transform:translateX(-180px) scaleX(1);
+  }
+  100%{
+    opacity:0;
+    transform:translateX(-360px) scaleX(0.4);
+  }
+}
+@keyframes shutdownBeamLeftWide{
+  0%{
+    opacity:0;
+    transform:translateX(0) scaleX(0.35);
+  }
+  14%{
+    opacity:1;
+  }
+  64%{
+    opacity:1;
+    transform:translateX(-240px) scaleX(1.08);
+  }
+  100%{
+    opacity:0;
+    transform:translateX(-440px) scaleX(0.38);
+  }
+}
+@keyframes shutdownBeamRight{
+  0%{
+    opacity:0;
+    transform:translateX(0) scaleX(0.35);
+  }
+  12%{
+    opacity:1;
+  }
+  60%{
+    opacity:1;
+    transform:translateX(180px) scaleX(1);
+  }
+  100%{
+    opacity:0;
+    transform:translateX(360px) scaleX(0.4);
+  }
+}
+@keyframes shutdownBeamRightWide{
+  0%{
+    opacity:0;
+    transform:translateX(0) scaleX(0.35);
+  }
+  14%{
+    opacity:1;
+  }
+  64%{
+    opacity:1;
+    transform:translateX(240px) scaleX(1.08);
+  }
+  100%{
+    opacity:0;
+    transform:translateX(440px) scaleX(0.38);
+  }
+}
+
+.sleep-container {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+}
+
+.sleep-text {
+  font-size:1.15rem;
+  letter-spacing:0.06em;
+}
+
+.sleep-dots {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  height:24px;
+}
+
+.sleep-dots span {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--mainColor,#ff2a2a);
+  opacity:0.2;
+  animation:sleepDots 2s ease-in-out infinite;
+}
+
+.sleep-dots span:nth-child(2) { animation-delay:0.18s; }
+.sleep-dots span:nth-child(3) { animation-delay:0.36s; }
+
+@keyframes sleepDots {
+  0%, 20% { transform:translateX(0); opacity:0.22; }
+  35% { transform:translateX(12px); opacity:1; }
+  50% { transform:translateX(12px); opacity:1; }
+  75% { transform:translateX(0); opacity:0.36; }
+  100% { transform:translateX(0); opacity:0.22; }
+}
+
+
+
+</style>
+</head>
+<body>
+
+<!-- SLEEP SCREEN -->
+<div id="sleepScreen" class="screen hidden" style="background:black;">
+  <div class="sleep-container">
+    <div class="sleep-text">The OS is sleeping...</div>
+    <div class="sleep-dots">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+</div>
+
+<!-- SHUTDOWN SCREEN -->
+<div id="shutdownScreen" class="screen hidden" style="background:black;">
+  <div class="shutdown-container">
+    <div class="shutdown-loader">
+      <div class="shutdown-sparks">
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark left"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+        <span class="shutdown-spark"></span>
+      </div>
+      <div class="shutdown-spinner"></div>
+    </div>
+    <div class="shutdown-text">Shutting down...</div>
+  </div>
+</div>
+
+
+
+
+
+<!-- BACKGROUND -->
+<div class="bg"></div>
+<div class="desktop" id="desktop">
+  <div class="desktop-overlay"></div>
+  <div class="ruby desktop-ruby"></div>
+  <div class="desktop-icons" id="desktopIcons"></div>
+</div>
+<div class="drag-toast" id="dragToast">
+  <svg class="drag-toast-border" viewBox="0 0 430 76" preserveAspectRatio="none" aria-hidden="true">
+    <rect class="drag-toast-shadow" x="2" y="2" width="426" height="72" rx="24" ry="24" fill="none" stroke="#5e090d" stroke-width="6.4" pathLength="400" stroke-dasharray="6 394" stroke-linecap="round" opacity="0.9"></rect>
+    <rect class="drag-toast-glow" x="2" y="2" width="426" height="72" rx="24" ry="24" fill="none" stroke="#ff6a52" stroke-width="3.4" pathLength="400" stroke-dasharray="6 394" stroke-linecap="round"></rect>
+    <rect class="drag-toast-trace" x="2" y="2" width="426" height="72" rx="24" ry="24" fill="none" stroke="#ff2f1f" stroke-width="2.8" pathLength="400" stroke-dasharray="6 394" stroke-linecap="round"></rect>
+    <circle class="drag-toast-spark" cx="18" cy="18" r="2.2" fill="#ff3a24" opacity="0"></circle>
+    <circle class="drag-toast-spark" cx="412" cy="18" r="2.2" fill="#ff3a24" opacity="0"></circle>
+    <circle class="drag-toast-spark" cx="18" cy="58" r="2.2" fill="#ff3a24" opacity="0"></circle>
+    <circle class="drag-toast-spark" cx="412" cy="58" r="2.2" fill="#ff3a24" opacity="0"></circle>
+  </svg>
+  <div class="drag-toast-inner">
+    <div class="drag-toast-sigil">
+      <div class="drag-toast-sigil-ring"></div>
+    </div>
+    <div>
+      <strong>Drag and Drop mode enabled</strong>
+      <span>Move the app to reorder Start or pin it to the taskbar.</span>
+    </div>
+  </div>
+</div>
+<div class="notifications" id="notifications"></div>
+<div class="event-overlay" id="eventOverlay"></div>
+<div class="context-menu" id="contextMenu"></div>
+<div class="task-switcher" id="taskSwitcher">
+  <div class="task-switcher-grid" id="taskSwitcherGrid"></div>
+</div>
+<div class="notification-center" id="notificationCenter">
+  <div class="notification-center-head">
+    <strong>Notification Center</strong>
+    <button onclick="clearNotificationHistory()">Clear</button>
+  </div>
+  <div class="notification-center-list" id="notificationHistory"></div>
+</div>
+
+
+<!-- TIME SCREEN -->
+<div id="timeScreen" class="screen">
+  <div style="text-align:center">
+    <div id="time" class="time">00:00:00</div>
+    <div id="date" class="date">Loading...</div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="screen hidden">
+  <div class="hack-box">
+    <div class="lock-profile">
+      <div class="lock-avatar" id="lockAvatar"></div>
+      <div class="lock-meta">
+        <strong id="lockName">Red</strong>
+        <span id="lockRole">CREATOR</span>
+      </div>
+    </div>
+    <select id="accountSelect" class="account-select" onchange="switchLoginAccount()"></select>
+    <div><b>Enter Password to Unlock</b></div>
+    <div class="cmd">
+      <input id="lockInput" placeholder="Password" />
+      <button onclick="unlock()">Unlock</button>
+<button onclick="goToForgot()">Forgot password?</button>
+<button onclick="goToCreateAccount()">New account</button>
+
+    </div>
+    <div id="lockMsg"></div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD SCREEN -->
+<div id="forgotScreen" class="screen hidden">
+  <div class="hack-box">
+    <div><b>Verify Yourself</b></div>
+    <div class="cmd">
+      <input id="pinInput" placeholder="Enter recovery PIN" />
+      <button onclick="verifyPin()">Verify</button>
+    </div>
+    <div id="pinMsg"></div>
+  </div>
+</div>
+
+<!-- HACKING SCREEN -->
+<div id="hackScreen" class="screen hidden">
+  <div class="binary" id="binary"></div>
+  <div class="hack">
+    <div class="hack-title">Hacking Interface</div>
+    <div class="hack-box" id="legacyHackBox">> Waiting for command...</div>
+    <div class="cmd">
+      <input id="legacyCmdInput" placeholder="Type command..." />
+      <button onclick="runCommand()">RUN</button>
+    </div>
+    <div class="loading"><div class="fill" id="legacyFill"></div></div>
+  </div>
+</div>
+
+<!-- CREATE ACCOUNT SCREEN -->
+<div id="createAccountScreen" class="screen hidden">
+  <div class="hack-box">
+    <div><b>Create RedOs Account</b></div>
+    <div class="setting">
+      <div>Username:</div>
+      <input id="createUserName" placeholder="Choose a username" />
+    </div>
+    <div class="setting">
+      <div>Password:</div>
+      <input id="createUserPass" placeholder="Create a password" />
+    </div>
+    <div class="setting">
+      <div>Recovery PIN:</div>
+      <input id="createUserPin" placeholder="4+ digit recovery PIN" />
+    </div>
+    <div class="setting">
+      <div>Avatar Color:</div>
+      <select id="createUserAvatar">
+        <option value="#800">Crimson</option>
+        <option value="#a21d1d">Ruby</option>
+        <option value="#8b0000">Dark Red</option>
+        <option value="#5d0a0a">Blood</option>
+      </select>
+    </div>
+    <div class="cmd">
+      <button onclick="createAccount()">Create Account</button>
+      <button onclick="cancelCreateAccount()">Back</button>
+    </div>
+    <div id="createAccountMsg"></div>
+  </div>
+</div>
+
+<!-- HELP SCREEN -->
+<div id="helpScreen" class="screen hidden">
+  <div class="hack-box">
+    <div><b>Command List</b></div>
+    <div>> sudo hack pc</div>
+    <div>> open explorer</div>
+    <div>> help</div>
+    <div>> ls</div>
+    <div>> cd [folder]</div>
+    <div>> cat [file]</div>
+    <div>> clear</div>
+  </div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div id="settingsScreen" class="screen hidden">
+  <div class="hack-box">
+    <div><b>Settings</b></div>
+    <div class="setting">
+      <div>Theme Color:</div>
+      <select id="colorSelect" onchange="changeColor()">
+        <option value="#ff2a2a">Red</option>
+        <option value="#00ff88">Green</option>
+        <option value="#2a7bff">Blue</option>
+      </select>
+    </div>
+    <div class="setting">
+      <div>Password Lock:</div>
+      <input id="passInput" placeholder="Enter new password" />
+      <button onclick="setPassword()">Set Password</button>
+    </div>
+    <div class="setting">
+      <div>Current Password: <span id="currentPass">••••</span></div>
+    </div>
+    <div class="setting">
+      <div>Password Recovery:</div>
+      <button onclick="recoverPassword()">Recover Default</button>
+<div class="setting">
+  <div>Recovery PIN:</div>
+  <input id="pinSetInput" placeholder="New recovery PIN" />
+  <button onclick="setRecoveryPin()">Set PIN</button>
+</div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- TASKBAR -->
+<div class="taskbar" id="taskbar">
+  <div class="taskbar-left">
+    <div class="icon start-icon" id="startButton" title="Start" onclick="toggleStartMenu()">Start</div>
+  </div>
+  <div class="taskbar-center" id="taskbarApps"></div>
+  <div class="taskbar-right">
+    <div class="icon taskbar-mini" id="notificationBell" title="Notifications" onclick="toggleNotificationCenter()">N<span class="icon-orbit-dot"></span></div>
+    <div class="taskTime" id="taskTime">
+      <div id="taskClock">00:00</div>
+      <div id="taskDate">Mon, 1 Jan</div>
+    </div>
+  </div>
+</div>
+
+<!-- START MENU -->
+<div class="startMenu" id="startMenu">
+  <div class="startHeader">
+    <div class="avatar" id="profileAvatar"></div>
+    <div>
+      <div class="username" id="profileName"></div>
+      <div class="role-badge" id="profileRole">USER</div>
+      <div class="startTagline">Launch apps, tweak the system, control power.</div>
+    </div>
+  </div>
+  <div class="startSearch">
+    <input id="startSearchInput" placeholder="Search apps..." oninput="filterApps()">
+  </div>
+  <div class="startApps" id="startAppsContainer"></div>
+  <div class="startPower">
+    <button onclick="sleepOS()">Sleep</button>
+    <button onclick="restartOS()">Restart</button>
+    <button onclick="shutdownOS()">Shutdown</button>
+  </div>
+</div>
+
+<!-- APP WINDOW (EXPLORER) -->
+<div class="app" id="explorer">
+  <div class="app-header drag" id="dragExplorer">
+    <div class="title">File Explorer</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('explorer')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('explorer')">+</div>
+      <div class="close" onclick="closeExplorer()">X</div>
+    </div>
+  </div>
+
+<div class="app-body">
+  <div style="margin-bottom:10px;">
+    <b id="pathDisplay">/</b>
+    <button onclick="goBack()">Back</button>
+    <button onclick="newFolder()">+ Folder</button>
+    <button onclick="newFile()">+ File</button>
+  </div>
+
+  <div id="fileList"></div>
+</div>
+</div>
+
+<!-- APP WINDOW (CALENDAR) -->
+<div class="app" id="calendarApp" style="top:14%;left:18%;width:64%;height:68%;">
+  <div class="app-header drag" id="dragCalendar">
+    <div class="title">Calendar</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('calendarApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('calendarApp')">+</div>
+      <div class="close" onclick="closeCalendar()">X</div>
+    </div>
+  </div>
+  <div class="app-body calendar-body">
+    <div class="calendar-shell">
+      <div class="calendar-topbar">
+        <div class="calendar-title-wrap">
+          <div class="calendar-title" id="calendarMonthLabel">March 2026</div>
+          <div class="calendar-subtitle" id="calendarTodayLabel">Scanning timeline...</div>
+        </div>
+        <div class="calendar-controls">
+          <button class="calendar-btn" onclick="changeCalendarMonth(-1)">&lt;</button>
+          <button onclick="jumpCalendarToday()">Today</button>
+          <button class="calendar-btn" onclick="changeCalendarMonth(1)">&gt;</button>
+        </div>
+      </div>
+      <div class="calendar-grid" id="calendarWeekdays"></div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="calendar-status">
+        <div>
+          <strong id="calendarSelectedLabel">No date selected</strong>
+          <span id="calendarSelectedMeta">Pick a day to inspect its timestamp.</span>
+        </div>
+        <div>
+          <strong>System Clock</strong>
+          <span id="calendarClockStatus">00:00:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="hackApp" style="top:12%;left:18%;width:64%;height:70%;">
+  <div class="app-header drag" id="dragHack">
+    <div class="title">Terminal</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('hackApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('hackApp')">+</div>
+      <div class="close" onclick="closeHack()">X</div>
+    </div>
+  </div>
+  <div class="app-body" style="position:relative;">
+    <div class="binary" id="binaryWindow"></div>
+    <div class="hack">
+      <div class="hack-title">Terminal</div>
+      <div class="hack-box" id="hackBox">> Waiting for command...</div>
+      <div class="cmd">
+        <input id="cmdInput" placeholder="Type command..." />
+        <button onclick="runCommand()">RUN</button>
+      </div>
+      <div class="loading"><div class="fill" id="fill"></div></div>
+      <div class="terminal-help">
+        <b>Built-in Help</b>
+      <div class="terminal-help-grid">
+          <div>`help`</div>
+          <div>Show commands</div>
+          <div>`open notes`</div>
+          <div>Launch the Notes workspace</div>
+          <div>`open browser`</div>
+          <div>Open the RedOs browser</div>
+          <div>`open paint`</div>
+          <div>Launch the sketch canvas</div>
+          <div>`open gallery`</div>
+          <div>View saved Paint frames</div>
+          <div>`open calculator`</div>
+          <div>Run quick shell math</div>
+          <div>`open recycle`</div>
+          <div>Restore deleted files</div>
+          <div>`open archive`</div>
+          <div>Read recovered shell files</div>
+          <div>`open explorer`</div>
+          <div>Launch file explorer</div>
+          <div>`open system`</div>
+          <div>Open protected system folder</div>
+          <div>`open diagnostics`</div>
+          <div>Creator-only telemetry panel</div>
+          <div>`ls`</div>
+          <div>List sample folders</div>
+          <div>`clear`</div>
+          <div>Reset terminal output</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="notesApp" style="top:14%;left:16%;width:68%;height:72%;">
+  <div class="app-header drag" id="dragNotes">
+    <div class="title">Notes</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('notesApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('notesApp')">+</div>
+      <div class="close" onclick="closeNotes()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="notes-shell">
+      <div class="notes-sidebar">
+        <div class="notes-sidebar-head">
+          <div>
+            <strong>Signal Notes</strong>
+            <span id="notesCountLabel">0 notes saved</span>
+          </div>
+        </div>
+        <div class="notes-actions">
+          <button onclick="createNote()">New</button>
+          <button onclick="deleteCurrentNote()">Delete</button>
+        </div>
+        <div class="notes-list" id="notesList"></div>
+      </div>
+      <div class="notes-editor">
+        <input id="notesTitleInput" class="notes-title-input" placeholder="Untitled note" oninput="persistCurrentNote()">
+        <textarea id="notesContentInput" placeholder="Write something worth remembering..." oninput="persistCurrentNote()"></textarea>
+        <div class="notes-editor-meta">
+          <span id="notesStatus">Notes saved locally for this account.</span>
+          <span id="notesUpdatedAt">No edits yet</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="browserApp" style="top:10%;left:14%;width:72%;height:74%;">
+  <div class="app-header drag" id="dragBrowser">
+    <div class="title">Browser</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('browserApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('browserApp')">+</div>
+      <div class="close" onclick="closeBrowser()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="browser-shell">
+      <div class="browser-toolbar">
+        <input id="browserInput" placeholder="Search RedOs space..." />
+        <button onclick="searchBrowser()">Search</button>
+        <button onclick="openBrowserPage('home')">Home</button>
+        <button onclick="openBrowserPage('signals')">Signals</button>
+        <button onclick="openBrowserPage('vault')">Vault</button>
+      </div>
+      <div class="browser-tabs" id="browserTabs"></div>
+      <div class="bookmark-row" id="browserBookmarks"></div>
+      <div class="browser-view" id="browserView"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="musicApp" style="top:12%;left:18%;width:64%;height:70%;">
+  <div class="app-header drag" id="dragMusic">
+    <div class="title">Music</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('musicApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('musicApp')">+</div>
+      <div class="close" onclick="closeMusic()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="music-shell">
+      <div class="music-queue" id="musicQueue"></div>
+      <div class="music-stage">
+        <div class="music-panel">
+          <strong id="musicTitle">No track selected</strong>
+          <span id="musicMeta">Choose a track from the queue.</span>
+        </div>
+        <div class="music-visualizer" id="musicVisualizer"></div>
+        <div class="music-controls">
+          <button onclick="toggleMusicPlayback()" id="musicPlayBtn">Play</button>
+          <button onclick="nextTrack()">Next</button>
+          <button onclick="shuffleTracks()">Shuffle</button>
+          <span id="musicStatus">Visualizer idle.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="paintApp" style="top:11%;left:16%;width:68%;height:72%;">
+  <div class="app-header drag" id="dragPaint">
+    <div class="title">Paint</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('paintApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('paintApp')">+</div>
+      <div class="close" onclick="closePaint()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="paint-shell">
+      <div class="paint-toolbar">
+        <div class="music-controls">
+          <input type="color" id="paintColor" value="#ff2a2a" onchange="updatePaintBrush()">
+          <input type="range" id="paintSize" min="1" max="20" value="4" onchange="updatePaintBrush()">
+          <span id="paintStatus">Brush ready.</span>
+        </div>
+        <div class="music-controls">
+          <button onclick="clearPaintCanvas()">Clear</button>
+          <button onclick="savePaintCanvas()">Save</button>
+        </div>
+      </div>
+      <div class="paint-board">
+        <canvas id="paintCanvas" width="1200" height="720"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="storeApp" style="top:12%;left:20%;width:58%;height:68%;">
+  <div class="app-header drag" id="dragStore">
+    <div class="title">App Store</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('storeApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('storeApp')">+</div>
+      <div class="close" onclick="closeStore()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="store-shell">
+      <div class="store-header">
+        <strong>RedOs Modules</strong>
+        <span id="storeStatus">Install extra vibes into the shell.</span>
+      </div>
+      <div class="store-grid" id="storeGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="missionsApp" style="top:13%;left:19%;width:60%;height:66%;">
+  <div class="app-header drag" id="dragMissions">
+    <div class="title">Missions</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('missionsApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('missionsApp')">+</div>
+      <div class="close" onclick="closeMissions()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="missions-shell">
+      <div class="missions-head">
+        <strong>RedOs Objectives</strong>
+        <span id="missionsStatus">Track the chaos.</span>
+      </div>
+      <div class="missions-list" id="missionsList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="controlApp" style="top:15%;left:21%;width:54%;height:60%;">
+  <div class="app-header drag" id="dragControl">
+    <div class="title">Control Center</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('controlApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('controlApp')">+</div>
+      <div class="close" onclick="closeControlCenter()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="control-grid" id="controlGrid"></div>
+  </div>
+</div>
+
+<div class="app panel-window" id="archiveApp" style="top:11%;left:17%;width:66%;height:72%;">
+  <div class="app-header drag" id="dragArchive">
+    <div class="title">Archive</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('archiveApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('archiveApp')">+</div>
+      <div class="close" onclick="closeArchive()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="archive-shell">
+      <div class="archive-head">
+        <strong>RedOs Archive</strong>
+        <span>Recovered files, logs, and weird builder lore.</span>
+      </div>
+      <div class="archive-grid" id="archiveGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="calculatorApp" style="top:18%;left:27%;width:36%;height:58%;">
+  <div class="app-header drag" id="dragCalculator">
+    <div class="title">Calculator</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('calculatorApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('calculatorApp')">+</div>
+      <div class="close" onclick="closeCalculator()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="calculator-shell">
+      <div class="calculator-display">
+        <strong id="calculatorDisplay">0</strong>
+        <span id="calculatorHistory">Ready for input</span>
+      </div>
+      <div class="calculator-grid">
+        <button onclick="clearCalculator()">AC</button>
+        <button onclick="appendCalculator('(')">(</button>
+        <button onclick="appendCalculator(')')">)</button>
+        <button onclick="appendCalculator('/')">/</button>
+        <button onclick="appendCalculator('7')">7</button>
+        <button onclick="appendCalculator('8')">8</button>
+        <button onclick="appendCalculator('9')">9</button>
+        <button onclick="appendCalculator('*')">*</button>
+        <button onclick="appendCalculator('4')">4</button>
+        <button onclick="appendCalculator('5')">5</button>
+        <button onclick="appendCalculator('6')">6</button>
+        <button onclick="appendCalculator('-')">-</button>
+        <button onclick="appendCalculator('1')">1</button>
+        <button onclick="appendCalculator('2')">2</button>
+        <button onclick="appendCalculator('3')">3</button>
+        <button onclick="appendCalculator('+')">+</button>
+        <button onclick="appendCalculator('0')">0</button>
+        <button onclick="appendCalculator('.')">.</button>
+        <button onclick="backspaceCalculator()">DEL</button>
+        <button onclick="solveCalculator()">=</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="galleryApp" style="top:12%;left:18%;width:64%;height:68%;">
+  <div class="app-header drag" id="dragGallery">
+    <div class="title">Gallery</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('galleryApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('galleryApp')">+</div>
+      <div class="close" onclick="closeGallery()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="gallery-shell">
+      <div class="gallery-sidebar">
+        <strong>Saved Frames</strong>
+        <div class="gallery-list" id="galleryList"></div>
+      </div>
+      <div class="gallery-view" id="galleryView"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="recycleApp" style="top:14%;left:20%;width:58%;height:66%;">
+  <div class="app-header drag" id="dragRecycle">
+    <div class="title">Recycle Bin</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('recycleApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('recycleApp')">+</div>
+      <div class="close" onclick="closeRecycleBin()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="browser-shell">
+      <div class="browser-toolbar">
+        <button onclick="emptyRecycleBin()">Empty Bin</button>
+      </div>
+      <div class="browser-view" id="recycleList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="settingsApp" style="top:16%;left:22%;width:48%;height:58%;">
+  <div class="app-header drag" id="dragSettings">
+    <div class="title">Settings</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('settingsApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('settingsApp')">+</div>
+      <div class="close" onclick="closeSettings()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="hack-box">
+      <div><b>Settings</b></div>
+      <div class="setting">
+        <div>Theme Color:</div>
+        <select id="colorSelectWindow" onchange="changeColorFromWindow()">
+          <option value="#ff2a2a">Red</option>
+          <option value="#00ff88">Green</option>
+          <option value="#2a7bff">Blue</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div>Password Lock:</div>
+        <input id="passInputWindow" placeholder="Enter new password" />
+        <button onclick="setPasswordFromWindow()">Set Password</button>
+      </div>
+      <div class="setting">
+        <div>Current Password: <span id="currentPassWindow">â€¢â€¢â€¢â€¢</span></div>
+      </div>
+      <div class="setting">
+        <div>Password Recovery:</div>
+        <button onclick="recoverPasswordFromWindow()">Recover Default</button>
+      </div>
+      <div class="setting">
+        <div>Role:</div>
+        <select id="roleSelectWindow" onchange="changeRole()">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="creator">Creator</option>
+        </select>
+        <div class="role-note" id="roleNote">Creator is reserved for the builders of this RedOs install.</div>
+      </div>
+      <div class="setting">
+        <div>Recovery PIN:</div>
+        <input id="pinSetInputWindow" placeholder="New recovery PIN" />
+        <button onclick="setRecoveryPinFromWindow()">Set PIN</button>
+      </div>
+      <div class="profile-editor-grid">
+        <div class="setting">
+          <div>Display Name:</div>
+          <input id="profileNameInput" placeholder="Update display name" />
+        </div>
+        <div class="setting">
+          <div>Avatar Color:</div>
+          <select id="profileAvatarInput">
+            <option value="#800">Crimson</option>
+            <option value="#2a7bff">Blue</option>
+            <option value="#00b894">Teal</option>
+            <option value="#f39c12">Amber</option>
+            <option value="#8e44ad">Violet</option>
+          </select>
+        </div>
+        <div class="setting">
+          <div>Boot Style:</div>
+          <select id="bootStyleSelect" onchange="saveBootStyle()">
+            <option value="normal">Normal Boot</option>
+            <option value="creator">Creator Boot</option>
+            <option value="recovery">Recovery Boot</option>
+            <option value="glitch">Corrupted Boot</option>
+          </select>
+        </div>
+        <div class="setting">
+          <div>Profile Bio:</div>
+          <textarea id="profileBioInput" class="profile-bio" placeholder="Say something mysterious..."></textarea>
+        </div>
+      </div>
+      <button onclick="saveProfileEditor()">Save Profile</button>
+      <button class="reset-btn" onclick="factoryReset()">Factory Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="app panel-window" id="diagnosticsApp" style="top:10%;left:20%;width:56%;height:64%;">
+  <div class="app-header drag" id="dragDiagnostics">
+    <div class="title">Diagnostics</div>
+    <div class="window-actions">
+      <div class="window-btn" onclick="minimizeWindow('diagnosticsApp')">-</div>
+      <div class="window-btn" onclick="toggleMaximize('diagnosticsApp')">+</div>
+      <div class="close" onclick="closeDiagnostics()">X</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="hack-box" style="height:auto;">
+      <div><b>Creator Diagnostics</b></div>
+      <div class="diagnostics-grid" id="diagnosticsGrid"></div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<!-- CREATE FILE/FOLDER MODAL -->
+<div class="app" id="createModal" style="width:300px;height:200px;top:30%;left:35%;display:none;">
+  <div class="app-header">
+    <div class="title" id="createTitle">Create</div>
+    <div class="close" onclick="closeCreate()">X</div>
+  </div>
+  <div class="app-body">
+    <input id="createName" placeholder="Enter name" style="width:100%;margin-bottom:10px;">
+    <button onclick="confirmCreate()">Create</button>
+  </div>
+</div>
+
+
+<script>
+
+const __redosPublicNativeStorage = window.localStorage;
+const localStorage = {
+  getItem(key){ return __redosPublicNativeStorage.getItem(`redos_public_${key}`); },
+  setItem(key, value){ __redosPublicNativeStorage.setItem(`redos_public_${key}`, value); },
+  removeItem(key){ __redosPublicNativeStorage.removeItem(`redos_public_${key}`); }
+};
+
+function openFile(name){
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, currentPath);
+  const file = folder.children[name];
+  if(!canAccessItem(file)){
+    notify("Administrator or Creator access required.", "System file locked");
+    return;
+  }
+
+  const content = prompt("Edit file:", file.content);
+  if(content !== null){
+    if(!canModifyItem(file)){
+      notify("Only Creator may modify protected system files.", "Protected");
+      return;
+    }
+    file.content = content;
+    localStorage.setItem("redos_fs", JSON.stringify(fs));
+    notify("File updated.", name);
+  }
+}
+
+function renameEntry(name){
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, currentPath);
+  const item = folder.children[name];
+  if(!canModifyItem(item)){
+    notify("Only Creator may rename protected system files.", "Protected");
+    return;
+  }
+  const nextName = prompt("Rename item:", name);
+  if(!nextName || nextName === name) return;
+  if(folder.children[nextName]){
+    notify("That name already exists.", "Rename blocked");
+    return;
+  }
+  folder.children[nextName] = folder.children[name];
+  delete folder.children[name];
+  localStorage.setItem("redos_fs", JSON.stringify(fs));
+  loadExplorer();
+  notify("Item renamed.", nextName);
+}
+
+function deleteEntry(name){
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, currentPath);
+  const item = folder.children[name];
+  if(!canModifyItem(item)){
+    notify("Only Creator may delete protected system files.", "Protected");
+    return;
+  }
+  if(!confirm(`Delete ${name}?`)) return;
+  const recycleBin = getRecycleBin();
+  recycleBin.unshift({
+    id: `trash_${Date.now()}`,
+    name,
+    path: currentPath,
+    item,
+    deletedAt: new Date().toLocaleString()
+  });
+  saveRecycleBin(recycleBin);
+  delete folder.children[name];
+  localStorage.setItem("redos_fs", JSON.stringify(fs));
+  loadExplorer();
+  notify("Item moved to Recycle Bin.", name);
+}
+
+
+function openExplorer(){
+  const exp = document.getElementById("explorer");
+  restoreWindowIfNeeded("explorer");
+  exp.style.display = "flex";
+  exp.style.zIndex = 999;
+  renderTaskbarApps();
+  showDesktop();
+  closeStartMenu();
+  loadExplorer();
+  focusWindow("explorer");
+  activateIcon("iconExplorer");
+}
+
+function closeExplorer(){
+  document.getElementById("explorer").style.display = "none";
+  deactivateIcon("iconExplorer");
+  renderTaskbarApps();
+}
+
+function openCalendar(){
+  const calendar = document.getElementById("calendarApp");
+  restoreWindowIfNeeded("calendarApp");
+  calendar.style.display = "flex";
+  calendar.style.zIndex = 999;
+  renderTaskbarApps();
+  showDesktop();
+  closeStartMenu();
+  renderCalendar();
+  focusWindow("calendarApp");
+  activateIcon("iconCalendar");
+}
+
+function closeCalendar(){
+  document.getElementById("calendarApp").style.display = "none";
+  deactivateIcon("iconCalendar");
+  renderTaskbarApps();
+}
+
+function updateNotesMeta(message){
+  const updated = document.getElementById("notesUpdatedAt");
+  const status = document.getElementById("notesStatus");
+  if(status && message) status.textContent = message;
+  const activeNote = notesState.find(note => note.id === currentNoteId);
+  if(updated){
+    updated.textContent = activeNote
+      ? "Updated " + new Date(activeNote.updatedAt || Date.now()).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
+      : "No edits yet";
+  }
+}
+
+function escapeHtml(value){
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderNotesList(){
+  ensureNotesState();
+  const host = document.getElementById("notesList");
+  const count = document.getElementById("notesCountLabel");
+  if(!host) return;
+
+  host.innerHTML = "";
+  count.textContent = `${notesState.length} note${notesState.length === 1 ? "" : "s"} saved`;
+
+  if(!notesState.length){
+    host.innerHTML = `<div class="notes-empty">No notes yet. Create one to start building your RedOs lore.</div>`;
+    return;
+  }
+
+  notesState
+    .slice()
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .forEach(note => {
+      const item = document.createElement("div");
+      item.className = "notes-item" + (note.id === currentNoteId ? " active" : "");
+      const preview = (note.content || "No text yet.").replace(/\n/g, " ").slice(0, 54) || "No text yet.";
+      item.innerHTML = `
+        <strong>${escapeHtml(note.title || "Untitled note")}</strong>
+        <span>${escapeHtml(preview)}</span>
+      `;
+      item.onclick = () => selectNote(note.id);
+      host.appendChild(item);
+    });
+}
+
+function selectNote(noteId){
+  ensureNotesState();
+  const note = notesState.find(item => item.id === noteId) || notesState[0];
+  if(!note) return;
+  currentNoteId = note.id;
+  document.getElementById("notesTitleInput").value = note.title || "";
+  document.getElementById("notesContentInput").value = note.content || "";
+  renderNotesList();
+  updateNotesMeta("Notes saved locally for this account.");
+}
+
+function persistCurrentNote(){
+  ensureNotesState();
+  const note = notesState.find(item => item.id === currentNoteId);
+  if(!note) return;
+
+  note.title = document.getElementById("notesTitleInput").value.trim() || "Untitled note";
+  note.content = document.getElementById("notesContentInput").value;
+  note.updatedAt = Date.now();
+  saveNotes(notesState);
+  renderNotesList();
+  updateNotesMeta("Saved to local note memory.");
+}
+
+function createNote(){
+  ensureNotesState();
+  const note = {
+    id: `note_${Date.now()}`,
+    title: `New note ${notesState.length + 1}`,
+    content: "",
+    updatedAt: Date.now()
+  };
+  notesState.unshift(note);
+  currentNoteId = note.id;
+  saveNotes(notesState);
+  renderNotesList();
+  selectNote(note.id);
+  notify("New note created.", "Notes");
+}
+
+function deleteCurrentNote(){
+  ensureNotesState();
+  if(notesState.length <= 1){
+    notify("Keep at least one note alive.", "Notes");
+    return;
+  }
+  const note = notesState.find(item => item.id === currentNoteId);
+  if(!note) return;
+  if(!confirm(`Delete "${note.title || "Untitled note"}"?`)) return;
+  notesState = notesState.filter(item => item.id !== currentNoteId);
+  currentNoteId = notesState[0]?.id || null;
+  saveNotes(notesState);
+  renderNotesList();
+  selectNote(currentNoteId);
+  notify("Note deleted.", "Notes");
+}
+
+function openNotes(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  ensureNotesState();
+  restoreWindowIfNeeded("notesApp");
+  document.getElementById("notesApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("notesApp");
+  renderNotesList();
+  selectNote(currentNoteId || notesState[0]?.id);
+  activateIcon("iconNotes");
+  currentScreen = "notes";
+}
+
+function closeNotes(){
+  document.getElementById("notesApp").style.display = "none";
+  deactivateIcon("iconNotes");
+  renderTaskbarApps();
+}
+
+const BROWSER_PAGES = {
+  home: {
+    title: "RedOs Search Home",
+    body: "Search the internal web, browse fake network spaces, and jump into RedOs lore pages.",
+    cards: [
+      { title:"Signals", body:"Interference reports, terminal chatter, and active network rumors." },
+      { title:"Vault", body:"Protected-looking pages with fragments from the builders." },
+      { title:"Apps", body:"Quick launch index for all the strange tools in this shell." },
+      { title:"Status", body:"A dashboard for uptime, role state, and surface activity." }
+    ]
+  },
+  signals: {
+    title: "Signals Feed",
+    body: "Packet echoes detected across the RedOs layer. Most are harmless. Some are interesting.",
+    cards: [
+      { title:"Echo 01", body:"A hidden process wants you to open Archive." },
+      { title:"Echo 02", body:"Missions marked complete increase shell confidence." },
+      { title:"Echo 03", body:"Creator diagnostics remain deeper than they look." },
+      { title:"Echo 04", body:"Music mode stabilizes the visualizer loop." }
+    ]
+  },
+  vault: {
+    title: "Builder Vault",
+    body: "This page looks locked, but the shell still leaks hints if you know where to read.",
+    cards: [
+      { title:"Owner Mark", body:"Creator authority and visible role are now separate." },
+      { title:"Temporary Accounts", body:"Names ending in .delete self-destruct at session end." },
+      { title:"Desktop Mesh", body:"Start and taskbar apps can now drop straight onto the desktop." },
+      { title:"Archive", body:"Recovered fragments may contain easter egg clues." }
+    ]
+  },
+  apps: {
+    title: "App Index",
+    body: "A quick browser-side index of the RedOs suite.",
+    cards: [
+      { title:"Browser", body:"Fake web, quick jumps, and stylized search results." },
+      { title:"Paint", body:"Draw on a saved local canvas and leave weird symbols behind." },
+      { title:"Store", body:"Install harmless shell modules for extra vibe." },
+      { title:"Control Center", body:"Flip ambience toggles and reshape the shell mood." }
+    ]
+  },
+  status: {
+    title: "Shell Status",
+    body: "Core shell is stable. Visual systems active. User presence confirmed.",
+    cards: [
+      { title:"Desktop", body:"Multi-window shell active with draggable apps." },
+      { title:"Filesystem", body:"System folder protected by role-aware access gates." },
+      { title:"Start Search", body:"Fast lookup still routes launches through the same app registry." },
+      { title:"Shutdown", body:"Particles still fire sideways across the screen during long shutdown." }
+    ]
+  }
+};
+
+const MUSIC_TRACKS = [
+  { id:"track_1", title:"Crimson Boot", meta:"98 BPM • startup pulse", notes:[261.63,329.63,392.0,523.25,392.0,329.63,293.66,329.63] },
+  { id:"track_2", title:"Signal Spill", meta:"112 BPM • data drift", notes:[293.66,349.23,440.0,349.23,493.88,440.0,349.23,329.63] },
+  { id:"track_3", title:"Vault Echo", meta:"90 BPM • quiet threat", notes:[220.0,261.63,329.63,261.63,392.0,329.63,261.63,246.94] },
+  { id:"track_4", title:"Night Kernel", meta:"124 BPM • neon pressure", notes:[329.63,392.0,493.88,392.0,523.25,493.88,392.0,349.23] }
+];
+
+const STORE_MODULES = [
+  { id:"wallpaper_pack", title:"Wallpaper Pack", body:"Extra ambient themes for the shell background." },
+  { id:"glow_patch", title:"Glow Patch", body:"Enhances panel glow and makes the desktop feel hotter." },
+  { id:"sound_bank", title:"Sound Bank", body:"Adds system sounds to the RedOs universe." },
+  { id:"quest_feed", title:"Quest Feed", body:"Pushes extra objective prompts into Missions." }
+];
+
+const MISSION_DEFS = [
+  { id:"pin_app", title:"Pin a new app", body:"Use drag mode or right click to pin something to the taskbar." },
+  { id:"drop_desktop", title:"Drop an app on desktop", body:"Take any app from Start or the taskbar and make a desktop shortcut." },
+  { id:"open_archive", title:"Read the Archive", body:"Open Archive and inspect at least one recovered file." },
+  { id:"draw_symbol", title:"Paint a symbol", body:"Leave a mark on the Paint canvas and save it." },
+  { id:"install_module", title:"Install a module", body:"Open App Store and install one shell module." }
+];
+
+const ARCHIVE_ITEMS = [
+  { id:"boot_fragment", title:"boot_fragment.log", body:"Recovered boot text from an older RedOs session.", content:"[BOOT]\nRenderer synced.\nDesktop shell acquired.\nA builder left the lights on." },
+  { id:"mission_seed", title:"mission_seed.txt", body:"An internal note about why the system likes objectives.", content:"Missions make users explore.\nExploration makes the shell feel alive.\nAlive shells collect stories." },
+  { id:"control_notes", title:"control_notes.md", body:"A tiny note about ambience controls and shell mood.", content:"Focus mode trims background noise.\nRed glow mode sharpens highlights.\nNight shift cools the atmosphere without killing the vibe." },
+  { id:"easter_crumbs", title:"easter_crumbs.sys", body:"Not a full easter egg. Just the smell of one.", content:"If your friends start hunting, let them.\nThe shell behaves better when someone is curious." }
+];
+
+function getStoredObject(key, fallback = {}){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(key) || "null");
+    if(parsed && typeof parsed === "object") return parsed;
+  }catch{}
+  return { ...fallback };
+}
+
+function loadShellAppState(){
+  browserPage = localStorage.getItem("redos_browser_page") || "home";
+  currentTrackId = localStorage.getItem("redos_music_track") || MUSIC_TRACKS[0].id;
+  musicPlaying = localStorage.getItem("redos_music_playing") === "true";
+  missionState = getStoredObject("redos_missions");
+  storeState = getStoredObject("redos_store");
+  calculatorExpression = localStorage.getItem("redos_calculator_expr") || "";
+  notificationHistoryState = JSON.parse(localStorage.getItem("redos_notifications") || "[]");
+  browserTabsState = JSON.parse(localStorage.getItem("redos_browser_tabs") || "[]");
+  browserBookmarks = JSON.parse(localStorage.getItem("redos_browser_bookmarks") || "[\"home\",\"signals\"]");
+  if(!Array.isArray(notificationHistoryState)) notificationHistoryState = [];
+  if(!Array.isArray(browserTabsState)) browserTabsState = [];
+  if(!Array.isArray(browserBookmarks)) browserBookmarks = ["home","signals"];
+  activeBrowserTabId = localStorage.getItem("redos_browser_active_tab") || browserTabsState[0]?.id || null;
+  bootStyle = localStorage.getItem("redos_boot_style") || "normal";
+  secretState = getStoredObject("redos_secret_state");
+  controlState = {
+    redGlow: false,
+    focus: false,
+    night: false,
+    ...getStoredObject("redos_control")
+  };
+  if(!browserTabsState.length){
+    browserTabsState = [{ id:`tab_${Date.now()}`, page:browserPage, label:BROWSER_PAGES[browserPage]?.title || "Home" }];
+    activeBrowserTabId = browserTabsState[0].id;
+  }
+}
+
+function saveControlState(){
+  localStorage.setItem("redos_control", JSON.stringify(controlState));
+  applyControlCenterState();
+}
+
+function applyControlCenterState(){
+  const body = document.body;
+  body.style.filter = controlState.night ? "hue-rotate(180deg) saturate(0.9)" : "";
+  document.documentElement.style.setProperty("--shellBlur", controlState.focus ? "blur(2px)" : "blur(0px)");
+  const bg = document.querySelector(".bg");
+  if(bg){
+    bg.style.opacity = controlState.focus ? "0.6" : "";
+    bg.style.boxShadow = controlState.redGlow ? "inset 0 0 120px rgba(255,0,0,0.16)" : "";
+  }
+}
+
+function saveNotificationHistory(){
+  localStorage.setItem("redos_notifications", JSON.stringify(notificationHistoryState.slice(0, 60)));
+}
+
+function toggleNotificationCenter(){
+  const center = document.getElementById("notificationCenter");
+  center.classList.toggle("show");
+  playUiSound("click");
+  renderNotificationCenter();
+}
+
+function renderNotificationCenter(){
+  const host = document.getElementById("notificationHistory");
+  const bell = document.getElementById("notificationBell");
+  if(bell) bell.classList.toggle("active", notificationHistoryState.length > 0);
+  if(!host) return;
+  if(!notificationHistoryState.length){
+    host.innerHTML = `<div class="notification-history"><strong>Quiet for now</strong><span>No system messages yet.</span></div>`;
+    return;
+  }
+  host.innerHTML = notificationHistoryState.map(item => `
+    <div class="notification-history">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.message)}</span>
+      <small>${escapeHtml(item.time)}</small>
+    </div>
+  `).join("");
+}
+
+function clearNotificationHistory(){
+  notificationHistoryState = [];
+  saveNotificationHistory();
+  renderNotificationCenter();
+}
+
+function openBrowser(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("browserApp");
+  document.getElementById("browserApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("browserApp");
+  renderBrowserPage();
+  activateIcon("iconBrowser");
+  currentScreen = "browser";
+}
+
+function closeBrowser(){
+  document.getElementById("browserApp").style.display = "none";
+  deactivateIcon("iconBrowser");
+  renderTaskbarApps();
+}
+
+function openBrowserPage(pageId){
+  browserPage = BROWSER_PAGES[pageId] ? pageId : "home";
+  localStorage.setItem("redos_browser_page", browserPage);
+  const activeTab = browserTabsState.find(tab => tab.id === activeBrowserTabId);
+  if(activeTab){
+    activeTab.page = browserPage;
+    activeTab.label = BROWSER_PAGES[browserPage]?.title || "Page";
+  }
+  localStorage.setItem("redos_browser_tabs", JSON.stringify(browserTabsState));
+  renderBrowserPage();
+}
+
+function searchBrowser(){
+  const query = document.getElementById("browserInput").value.trim().toLowerCase();
+  if(!query){
+    openBrowserPage("home");
+    return;
+  }
+  const matchedPage = Object.entries(BROWSER_PAGES).find(([, page]) =>
+    page.title.toLowerCase().includes(query) ||
+    page.body.toLowerCase().includes(query) ||
+    page.cards.some(card => card.title.toLowerCase().includes(query) || card.body.toLowerCase().includes(query))
+  );
+  browserPage = matchedPage ? matchedPage[0] : "status";
+  localStorage.setItem("redos_browser_page", browserPage);
+  renderBrowserPage(query);
+}
+
+function renderBrowserPage(query = ""){
+  const page = BROWSER_PAGES[browserPage] || BROWSER_PAGES.home;
+  const host = document.getElementById("browserView");
+  document.getElementById("browserInput").value = query || page.title;
+  document.getElementById("browserTabs").innerHTML = browserTabsState.map(tab => `
+    <div class="browser-tab ${tab.id === activeBrowserTabId ? "active" : ""}" onclick="selectBrowserTab('${tab.id}')">${escapeHtml((tab.label || "Tab").slice(0, 18))}</div>
+  `).join("") + `<button onclick="createBrowserTab()">+</button>`;
+  document.getElementById("browserBookmarks").innerHTML = browserBookmarks.map(bookmark => `
+    <div class="bookmark-pill" onclick="openBrowserPage('${bookmark}')">${escapeHtml(BROWSER_PAGES[bookmark]?.title || bookmark)}</div>
+  `).join("") + `<button onclick="bookmarkCurrentPage()">Bookmark</button>`;
+  host.innerHTML = `
+    <div class="browser-hero">
+      <strong>${escapeHtml(page.title)}</strong>
+      <p>${escapeHtml(page.body)}</p>
+      <div class="browser-links">
+        <button onclick="openBrowserPage('home')">Home</button>
+        <button onclick="openBrowserPage('signals')">Signals</button>
+        <button onclick="openBrowserPage('apps')">Apps</button>
+        <button onclick="openBrowserPage('status')">Status</button>
+      </div>
+    </div>
+    <div class="browser-grid">
+      ${page.cards.map(card => `
+        <div class="archive-card">
+          <strong>${escapeHtml(card.title)}</strong>
+          <span>${escapeHtml(card.body)}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function createBrowserTab(){
+  const tab = { id:`tab_${Date.now()}`, page:browserPage, label:BROWSER_PAGES[browserPage]?.title || "Page" };
+  browserTabsState.push(tab);
+  activeBrowserTabId = tab.id;
+  localStorage.setItem("redos_browser_tabs", JSON.stringify(browserTabsState));
+  localStorage.setItem("redos_browser_active_tab", activeBrowserTabId);
+  renderBrowserPage();
+}
+
+function selectBrowserTab(tabId){
+  const tab = browserTabsState.find(item => item.id === tabId);
+  if(!tab) return;
+  activeBrowserTabId = tabId;
+  browserPage = tab.page;
+  localStorage.setItem("redos_browser_active_tab", activeBrowserTabId);
+  localStorage.setItem("redos_browser_page", browserPage);
+  renderBrowserPage();
+}
+
+function bookmarkCurrentPage(){
+  if(!browserBookmarks.includes(browserPage)) browserBookmarks.push(browserPage);
+  localStorage.setItem("redos_browser_bookmarks", JSON.stringify(browserBookmarks));
+  renderBrowserPage();
+  notify("Page bookmarked.", "Browser");
+}
+
+function openMusic(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("musicApp");
+  document.getElementById("musicApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("musicApp");
+  renderMusicApp();
+  activateIcon("iconMusic");
+  currentScreen = "music";
+}
+
+function closeMusic(){
+  document.getElementById("musicApp").style.display = "none";
+  stopMusicLoop();
+  deactivateIcon("iconMusic");
+  renderTaskbarApps();
+}
+
+function renderMusicApp(){
+  const queue = document.getElementById("musicQueue");
+  queue.innerHTML = MUSIC_TRACKS.map(track => `
+    <div class="music-track ${track.id === currentTrackId ? "active" : ""}" onclick="selectTrack('${track.id}')">
+      <strong>${escapeHtml(track.title)}</strong>
+      <span>${escapeHtml(track.meta)}</span>
+    </div>
+  `).join("");
+  const active = MUSIC_TRACKS.find(track => track.id === currentTrackId) || MUSIC_TRACKS[0];
+  document.getElementById("musicTitle").textContent = active.title;
+  document.getElementById("musicMeta").textContent = active.meta;
+  document.getElementById("musicPlayBtn").textContent = musicPlaying ? "Pause" : "Play";
+  document.getElementById("musicStatus").textContent = musicPlaying ? "Visualizer live." : "Visualizer idle.";
+  const visualizer = document.getElementById("musicVisualizer");
+  if(!visualizer.children.length){
+    visualizer.innerHTML = Array.from({ length: 18 }, (_, index) => `<div class="music-bar" style="height:${40 + ((index % 6) * 14)}px;animation-delay:${index * 0.08}s;"></div>`).join("");
+  }
+  visualizer.querySelectorAll(".music-bar").forEach(bar => {
+    bar.style.animationPlayState = musicPlaying ? "running" : "paused";
+  });
+  updateMusicPlaybackState();
+}
+
+function selectTrack(trackId){
+  currentTrackId = trackId;
+  localStorage.setItem("redos_music_track", currentTrackId);
+  musicStep = 0;
+  renderMusicApp();
+}
+
+function toggleMusicPlayback(){
+  musicPlaying = !musicPlaying;
+  localStorage.setItem("redos_music_playing", musicPlaying ? "true" : "false");
+  renderMusicApp();
+}
+
+function nextTrack(){
+  const index = MUSIC_TRACKS.findIndex(track => track.id === currentTrackId);
+  currentTrackId = MUSIC_TRACKS[(index + 1) % MUSIC_TRACKS.length].id;
+  localStorage.setItem("redos_music_track", currentTrackId);
+  musicPlaying = true;
+  localStorage.setItem("redos_music_playing", "true");
+  renderMusicApp();
+}
+
+function shuffleTracks(){
+  currentTrackId = MUSIC_TRACKS[Math.floor(Math.random() * MUSIC_TRACKS.length)].id;
+  localStorage.setItem("redos_music_track", currentTrackId);
+  musicStep = 0;
+  renderMusicApp();
+  notify("Queue reshuffled.", "Music");
+}
+
+function ensureAudioEngine(){
+  if(audioCtx) return audioCtx;
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if(!AudioContextCtor) return null;
+  audioCtx = new AudioContextCtor();
+  musicMaster = audioCtx.createGain();
+  musicMaster.gain.value = 0.12;
+  musicMaster.connect(audioCtx.destination);
+  return audioCtx;
+}
+
+function playUiSound(type="click"){
+  if(storeState.sound_bank === false) return;
+  const ctx = ensureAudioEngine();
+  if(!ctx || !musicMaster) return;
+  if(ctx.state === "suspended") ctx.resume();
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const soundMap = {
+    click: { freq: 380, duration:0.08, volume:0.05, type:"triangle" },
+    open: { freq: 520, duration:0.11, volume:0.06, type:"triangle" },
+    close: { freq: 280, duration:0.1, volume:0.05, type:"sine" },
+    notify: { freq: 620, duration:0.14, volume:0.07, type:"triangle" }
+  };
+  const cfg = soundMap[type] || soundMap.click;
+  osc.type = cfg.type;
+  osc.frequency.setValueAtTime(cfg.freq, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(cfg.volume, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + cfg.duration);
+  osc.connect(gain);
+  gain.connect(musicMaster);
+  osc.start(now);
+  osc.stop(now + cfg.duration + 0.02);
+}
+
+function playSynthNote(frequency, duration = 0.28){
+  const ctx = ensureAudioEngine();
+  if(!ctx || !musicMaster) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const wobble = ctx.createOscillator();
+  const wobbleGain = ctx.createGain();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(frequency, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  wobble.type = "sine";
+  wobble.frequency.setValueAtTime(5.4, now);
+  wobbleGain.gain.setValueAtTime(5, now);
+  wobble.connect(wobbleGain);
+  wobbleGain.connect(osc.frequency);
+  osc.connect(gain);
+  gain.connect(musicMaster);
+  osc.start(now);
+  wobble.start(now);
+  osc.stop(now + duration + 0.05);
+  wobble.stop(now + duration + 0.05);
+}
+
+function stopMusicLoop(){
+  if(musicTimer){
+    clearInterval(musicTimer);
+    musicTimer = null;
+  }
+}
+
+function startMusicLoop(){
+  const track = MUSIC_TRACKS.find(item => item.id === currentTrackId) || MUSIC_TRACKS[0];
+  const ctx = ensureAudioEngine();
+  if(!ctx) return;
+  if(ctx.state === "suspended") ctx.resume();
+  stopMusicLoop();
+  playSynthNote(track.notes[musicStep % track.notes.length], 0.24);
+  musicTimer = setInterval(()=>{
+    const activeTrack = MUSIC_TRACKS.find(item => item.id === currentTrackId) || MUSIC_TRACKS[0];
+    playSynthNote(activeTrack.notes[musicStep % activeTrack.notes.length], 0.24);
+    musicStep = (musicStep + 1) % activeTrack.notes.length;
+  }, 320);
+}
+
+function updateMusicPlaybackState(){
+  if(musicPlaying) startMusicLoop();
+  else stopMusicLoop();
+}
+
+function openCalculator(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("calculatorApp");
+  document.getElementById("calculatorApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("calculatorApp");
+  renderCalculator();
+  activateIcon("iconCalculator");
+  currentScreen = "calculator";
+}
+
+function closeCalculator(){
+  document.getElementById("calculatorApp").style.display = "none";
+  deactivateIcon("iconCalculator");
+  renderTaskbarApps();
+}
+
+function renderCalculator(history = "Ready for input"){
+  document.getElementById("calculatorDisplay").textContent = calculatorExpression || "0";
+  document.getElementById("calculatorHistory").textContent = history;
+}
+
+function appendCalculator(value){
+  calculatorExpression += value;
+  localStorage.setItem("redos_calculator_expr", calculatorExpression);
+  renderCalculator("Typing expression");
+}
+
+function clearCalculator(){
+  calculatorExpression = "";
+  localStorage.removeItem("redos_calculator_expr");
+  renderCalculator("Cleared");
+}
+
+function backspaceCalculator(){
+  calculatorExpression = calculatorExpression.slice(0, -1);
+  localStorage.setItem("redos_calculator_expr", calculatorExpression);
+  renderCalculator("Deleted last entry");
+}
+
+function solveCalculator(){
+  try{
+    const safe = calculatorExpression.replace(/[^0-9+\-*/(). ]/g, "");
+    const result = Function(`"use strict"; return (${safe || "0"});`)();
+    document.getElementById("calculatorHistory").textContent = `${calculatorExpression || "0"} =`;
+    calculatorExpression = String(Number.isFinite(result) ? result : 0);
+    localStorage.setItem("redos_calculator_expr", calculatorExpression);
+    renderCalculator("Solved");
+  }catch{
+    renderCalculator("Invalid expression");
+    notify("That calculation could not be parsed.", "Calculator");
+  }
+}
+
+function openGallery(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("galleryApp");
+  document.getElementById("galleryApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("galleryApp");
+  renderGallery();
+  activateIcon("iconGallery");
+  currentScreen = "gallery";
+}
+
+function closeGallery(){
+  document.getElementById("galleryApp").style.display = "none";
+  deactivateIcon("iconGallery");
+  renderTaskbarApps();
+}
+
+function openRecycleBin(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("recycleApp");
+  document.getElementById("recycleApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("recycleApp");
+  renderRecycleBin();
+  activateIcon("iconRecycle");
+  currentScreen = "recycle";
+}
+
+function closeRecycleBin(){
+  document.getElementById("recycleApp").style.display = "none";
+  deactivateIcon("iconRecycle");
+  renderTaskbarApps();
+}
+
+function renderRecycleBin(){
+  const host = document.getElementById("recycleList");
+  const items = getRecycleBin();
+  if(!items.length){
+    host.innerHTML = `<div class="gallery-empty"><div><strong>Recycle Bin is empty</strong><br><span>Deleted items will land here instead of vanishing.</span></div></div>`;
+    return;
+  }
+  host.innerHTML = items.map(item => `
+    <div class="archive-card">
+      <strong>${escapeHtml(item.name)}</strong>
+      <span>Deleted from ${escapeHtml(item.path)} on ${escapeHtml(item.deletedAt)}</span>
+      <button onclick="restoreRecycleItem('${item.id}')">Restore</button>
+      <button onclick="deleteRecycleItem('${item.id}')">Delete Permanently</button>
+    </div>
+  `).join("");
+}
+
+function restoreRecycleItem(itemId){
+  const items = getRecycleBin();
+  const entry = items.find(item => item.id === itemId);
+  if(!entry) return;
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, entry.path);
+  if(folder){
+    let restoredName = entry.name;
+    let copyIndex = 1;
+    while(folder.children[restoredName]){
+      restoredName = `${entry.name} (${copyIndex++})`;
+    }
+    folder.children[restoredName] = entry.item;
+    localStorage.setItem("redos_fs", JSON.stringify(fs));
+  }
+  saveRecycleBin(items.filter(item => item.id !== itemId));
+  renderRecycleBin();
+  loadExplorer();
+  notify("Item restored from Recycle Bin.", entry.name);
+}
+
+function deleteRecycleItem(itemId){
+  const items = getRecycleBin();
+  const entry = items.find(item => item.id === itemId);
+  if(!entry) return;
+  saveRecycleBin(items.filter(item => item.id !== itemId));
+  renderRecycleBin();
+  notify("Item permanently deleted.", entry.name);
+}
+
+function emptyRecycleBin(){
+  if(!getRecycleBin().length) return;
+  saveRecycleBin([]);
+  renderRecycleBin();
+  notify("Recycle Bin emptied.", "Recycle Bin");
+}
+
+function renderGallery(){
+  const savedPaint = localStorage.getItem("redos_paint_canvas");
+  const items = [
+    { id:"paint_latest", title:getPaintTitle(), meta:savedPaint ? "Fresh from Paint." : "Nothing saved yet.", image:savedPaint },
+    { id:"ruby_wallpaper", title:"Red Ruby Signal", meta:"A built-in RedOs visual frame.", image:null },
+    { id:"portal_banner", title:"Portal Banner Memory", meta:"A nod to the drag-and-drop portal effect.", image:null }
+  ];
+  if(!items.some(item => item.id === gallerySelection)) gallerySelection = items[0].id;
+  const list = document.getElementById("galleryList");
+  list.innerHTML = items.map(item => `
+    <div class="gallery-item ${item.id === gallerySelection ? "active" : ""}" onclick="selectGalleryItem('${item.id}')">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.meta)}</span>
+    </div>
+  `).join("");
+  const active = items.find(item => item.id === gallerySelection) || items[0];
+  const view = document.getElementById("galleryView");
+  if(active.image){
+    view.innerHTML = `
+      <div class="gallery-view-head">
+        <div>
+          <strong>${escapeHtml(active.title)}</strong>
+          <span>${escapeHtml(active.meta)}</span>
+        </div>
+        <button onclick="renameGalleryDrawing()">Rename drawing</button>
+      </div>
+      <img class="gallery-preview" alt="${escapeHtml(active.title)}" src="${active.image}">
+    `;
+  } else if(active.id === "ruby_wallpaper"){
+    view.innerHTML = `<div class="gallery-empty"><div><strong>Red Ruby Signal</strong><br><span>The desktop core rendered as a still frame.</span><div class="ruby" style="margin:20px auto 0;"></div></div></div>`;
+  } else {
+    view.innerHTML = `<div class="gallery-empty"><div><strong>Portal Banner Memory</strong><br><span>A calm snapshot of the drag-mode energy field.</span><div style="margin-top:18px;border:2px solid rgba(255,40,20,0.7);border-radius:999px;padding:18px 28px;box-shadow:0 0 28px rgba(255,0,0,0.18), inset 0 0 18px rgba(255,0,0,0.12);">Drag and Drop mode enabled</div></div></div>`;
+  }
+}
+
+function selectGalleryItem(id){
+  gallerySelection = id;
+  renderGallery();
+}
+
+function renameGalleryDrawing(){
+  const savedPaint = localStorage.getItem("redos_paint_canvas");
+  if(!savedPaint){
+    notify("Save a drawing in Paint first.", "Gallery");
+    return;
+  }
+  const currentName = getPaintTitle();
+  const nextName = prompt("Rename drawing:", currentName);
+  if(!nextName || !nextName.trim()) return;
+  localStorage.setItem("redos_paint_title", nextName.trim());
+  renderGallery();
+  notify("Drawing renamed.", "Gallery");
+}
+
+function openPaint(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("paintApp");
+  document.getElementById("paintApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("paintApp");
+  setupPaintCanvas();
+  activateIcon("iconPaint");
+  currentScreen = "paint";
+}
+
+function closePaint(){
+  document.getElementById("paintApp").style.display = "none";
+  deactivateIcon("iconPaint");
+  renderTaskbarApps();
+}
+
+function setupPaintCanvas(){
+  const canvas = document.getElementById("paintCanvas");
+  if(canvas.dataset.ready === "true") return;
+  const ctx = canvas.getContext("2d");
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const saved = localStorage.getItem("redos_paint_canvas");
+  if(saved){
+    const img = new Image();
+    img.onload = ()=>ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    img.src = saved;
+  }
+  const start = (event)=>{
+    paintState.drawing = true;
+    const { x, y } = getCanvasPoint(canvas, event);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+  const draw = (event)=>{
+    if(!paintState.drawing) return;
+    const { x, y } = getCanvasPoint(canvas, event);
+    ctx.strokeStyle = paintState.color;
+    ctx.lineWidth = paintState.size;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+  const end = ()=>{
+    if(!paintState.drawing) return;
+    paintState.drawing = false;
+    savePaintCanvas();
+  };
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", draw);
+  canvas.addEventListener("mouseup", end);
+  canvas.addEventListener("mouseleave", end);
+  canvas.dataset.ready = "true";
+  updatePaintBrush();
+}
+
+function getCanvasPoint(canvas, event){
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((event.clientY - rect.top) / rect.height) * canvas.height
+  };
+}
+
+function updatePaintBrush(){
+  paintState.color = document.getElementById("paintColor").value;
+  paintState.size = Number(document.getElementById("paintSize").value);
+  document.getElementById("paintStatus").textContent = `Brush ${paintState.size}px • ${paintState.color.toUpperCase()}`;
+}
+
+function clearPaintCanvas(){
+  const canvas = document.getElementById("paintCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  localStorage.removeItem("redos_paint_canvas");
+  localStorage.removeItem("redos_paint_title");
+  notify("Canvas cleared.", "Paint");
+}
+
+function savePaintCanvas(){
+  const canvas = document.getElementById("paintCanvas");
+  localStorage.setItem("redos_paint_canvas", canvas.toDataURL("image/png"));
+  if(!localStorage.getItem("redos_paint_title")){
+    localStorage.setItem("redos_paint_title", "Latest Paint Save");
+  }
+  document.getElementById("paintStatus").textContent = "Canvas saved locally.";
+  completeMission("draw_symbol");
+}
+
+function openStore(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("storeApp");
+  document.getElementById("storeApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("storeApp");
+  renderStore();
+  activateIcon("iconStore");
+  currentScreen = "store";
+}
+
+function closeStore(){
+  document.getElementById("storeApp").style.display = "none";
+  deactivateIcon("iconStore");
+  renderTaskbarApps();
+}
+
+function renderStore(){
+  const host = document.getElementById("storeGrid");
+  host.innerHTML = STORE_MODULES.map(module => {
+    const installed = !!storeState[module.id];
+    return `
+      <div class="store-card">
+        <strong>${escapeHtml(module.title)}</strong>
+        <span>${escapeHtml(module.body)}</span>
+        <button onclick="toggleStoreModule('${module.id}')">${installed ? "Installed" : "Install"}</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleStoreModule(moduleId){
+  storeState[moduleId] = !storeState[moduleId];
+  localStorage.setItem("redos_store", JSON.stringify(storeState));
+  renderStore();
+  if(moduleId === "glow_patch" && storeState[moduleId]){
+    document.querySelector(".taskbar").style.boxShadow = "0 0 34px rgba(255,0,0,0.14), inset 0 0 26px rgba(255,0,0,0.06)";
+  }
+  if(moduleId === "wallpaper_pack"){
+    document.querySelector(".bg").style.background = storeState[moduleId]
+      ? "radial-gradient(circle at center, rgba(255,0,0,0.14), transparent 58%), radial-gradient(circle at top right, rgba(255,140,90,0.12), transparent 32%), repeating-linear-gradient(0deg, rgba(255,0,0,0.05) 0px, rgba(255,0,0,0.05) 1px, transparent 1px, transparent 4px)"
+      : "";
+  }
+  if(moduleId === "sound_bank" && !storeState[moduleId]){
+    stopMusicLoop();
+    musicPlaying = false;
+    localStorage.setItem("redos_music_playing","false");
+  }
+  if(moduleId === "quest_feed" && storeState[moduleId]){
+    if(!browserBookmarks.includes("status")) browserBookmarks.push("status");
+    localStorage.setItem("redos_browser_bookmarks", JSON.stringify(browserBookmarks));
+    startSecretEvents();
+  }
+  if(storeState[moduleId]) completeMission("install_module");
+  notify(storeState[moduleId] ? "Module installed." : "Module removed.", "App Store");
+}
+
+function openMissions(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("missionsApp");
+  document.getElementById("missionsApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("missionsApp");
+  renderMissions();
+  activateIcon("iconMissions");
+  currentScreen = "missions";
+}
+
+function closeMissions(){
+  document.getElementById("missionsApp").style.display = "none";
+  deactivateIcon("iconMissions");
+  renderTaskbarApps();
+}
+
+function renderMissions(){
+  const host = document.getElementById("missionsList");
+  const completed = MISSION_DEFS.filter(mission => missionState[mission.id]).length;
+  document.getElementById("missionsStatus").textContent = `${completed}/${MISSION_DEFS.length} completed`;
+  host.innerHTML = MISSION_DEFS.map(mission => `
+    <div class="mission-card ${missionState[mission.id] ? "done" : ""}">
+      <strong>${escapeHtml(mission.title)}</strong>
+      <span>${escapeHtml(mission.body)}</span>
+      <button onclick="toggleMission('${mission.id}')">${missionState[mission.id] ? "Completed" : "Mark complete"}</button>
+    </div>
+  `).join("");
+}
+
+function toggleMission(missionId){
+  missionState[missionId] = !missionState[missionId];
+  localStorage.setItem("redos_missions", JSON.stringify(missionState));
+  renderMissions();
+  notify(missionState[missionId] ? "Mission completed." : "Mission reset.", "Missions");
+}
+
+function completeMission(missionId){
+  if(missionState[missionId]) return;
+  missionState[missionId] = true;
+  localStorage.setItem("redos_missions", JSON.stringify(missionState));
+}
+
+function openControlCenter(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("controlApp");
+  document.getElementById("controlApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("controlApp");
+  renderControlCenter();
+  activateIcon("iconControl");
+  currentScreen = "control";
+}
+
+function closeControlCenter(){
+  document.getElementById("controlApp").style.display = "none";
+  deactivateIcon("iconControl");
+  renderTaskbarApps();
+}
+
+function renderControlCenter(){
+  const host = document.getElementById("controlGrid");
+  const tiles = [
+    { id:"redGlow", title:"Red Glow", body:"Push more red energy into the shell atmosphere." },
+    { id:"focus", title:"Focus Mode", body:"Quiet the background and keep the desktop a bit calmer." },
+    { id:"night", title:"Night Shift", body:"Flip the shell into a colder late-night mode." }
+  ];
+  host.innerHTML = tiles.map(tile => `
+    <div class="control-tile">
+      <strong>${escapeHtml(tile.title)}</strong>
+      <span>${escapeHtml(tile.body)}</span>
+      <button class="${controlState[tile.id] ? "active" : ""}" onclick="toggleControl('${tile.id}')">${controlState[tile.id] ? "Enabled" : "Enable"}</button>
+    </div>
+  `).join("");
+}
+
+function toggleControl(id){
+  controlState[id] = !controlState[id];
+  saveControlState();
+  renderControlCenter();
+  notify(controlState[id] ? "Toggle enabled." : "Toggle disabled.", "Control Center");
+}
+
+function openArchive(){
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  restoreWindowIfNeeded("archiveApp");
+  document.getElementById("archiveApp").style.display = "flex";
+  renderTaskbarApps();
+  focusWindow("archiveApp");
+  renderArchive();
+  completeMission("open_archive");
+  activateIcon("iconArchive");
+  currentScreen = "archive";
+}
+
+function closeArchive(){
+  document.getElementById("archiveApp").style.display = "none";
+  deactivateIcon("iconArchive");
+  renderTaskbarApps();
+}
+
+function renderArchive(){
+  const items = secretState.vaultUnlocked
+    ? [...ARCHIVE_ITEMS, { id:"deep_vault", title:"deep_vault.sig", body:"A hidden chain unlocked this fragment.", content:"Signal traced.\nVault unlocked.\nIf you reached this, you were curious enough." }]
+    : ARCHIVE_ITEMS;
+  const host = document.getElementById("archiveGrid");
+  host.innerHTML = items.map(item => `
+    <div class="archive-card">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.body)}</span>
+      <button onclick="revealArchiveItem('${item.id}')">Open</button>
+      <pre id="archive-${item.id}" style="display:none;">${escapeHtml(item.content)}</pre>
+    </div>
+  `).join("");
+}
+
+function revealArchiveItem(id){
+  const panel = document.getElementById(`archive-${id}`);
+  if(panel){
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  }
+}
+
+
+
+function getFolder(fs, path){
+  const parts = path.split("/").filter(Boolean);
+  let cur = fs["/"];
+
+  for(const p of parts){
+    if(!cur.children[p]) return null;
+    cur = cur.children[p];
+  }
+  return cur;
+}
+
+function getCurrentRole(){
+  const account = getCurrentAccount();
+  return account ? account.role : (localStorage.getItem("redos_role") || "user");
+}
+
+function isPrivilegedRole(){
+  const role = getCurrentRole();
+  return role === "admin" || role === "creator";
+}
+
+function isCreatorRole(){
+  return false;
+}
+
+function canAccessItem(item){
+  if(!item || !item.protected) return true;
+  return isPrivilegedRole();
+}
+
+function canModifyItem(item){
+  if(!item || !item.protected) return true;
+  return getCurrentRole() === "creator";
+}
+
+function createSystemFolder(){
+  return {
+    type: "folder",
+    protected: true,
+    children: {
+      "kernel.sys": {
+        type: "file",
+        protected: true,
+        content: "RedOs Kernel 1.0\nStatus: Stable\nSecurity Ring: Crimson"
+      },
+      "boot.log": {
+        type: "file",
+        protected: true,
+        content: "[BOOT] RedOs initialized\n[AUTH] Role map loaded\n[UI] Desktop shell online"
+      },
+      "roles.cfg": {
+        type: "file",
+        protected: true,
+        content: "user=standard\nadmin=privileged\ncreator=builder"
+      },
+      "vault": {
+        type: "folder",
+        protected: true,
+        children: {
+          "creator-note.txt": {
+            type: "file",
+            protected: true,
+            content: "Welcome to the hidden RedOs system vault.\nOnly Admin and Creator may inspect this layer.\nCreator may rewrite the machine."
+          }
+        }
+      }
+    }
+  };
+}
+
+function ensureSystemFiles(){
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  if(!fs || !fs["/"]) return;
+  if(!fs["/"].children.System){
+    fs["/"].children.System = createSystemFolder();
+    localStorage.setItem("redos_fs", JSON.stringify(fs));
+  }
+}
+
+function goBack(){
+  if(currentPath === "/") return;
+  currentPath = currentPath.split("/").slice(0, -2).join("/") + "/";
+  loadExplorer();
+}
+
+
+
+
+
+if(!localStorage.getItem("redos_fs")){
+  const fs = {
+    "/": {
+      type: "folder",
+      children: {
+        "System": createSystemFolder()
+      }
+    }
+  };
+  localStorage.setItem("redos_fs", JSON.stringify(fs));
+}
+ensureSystemFiles();
+
+let currentPath = "/";
+let calendarViewDate = new Date();
+let selectedCalendarDate = new Date();
+
+function loadExplorer(){
+  ensureSystemFiles();
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, currentPath);
+
+  document.getElementById("pathDisplay").innerText = currentPath;
+  const list = document.getElementById("fileList");
+  list.innerHTML = "";
+
+  for(const name in folder.children){
+    const item = folder.children[name];
+
+    const row = document.createElement("div");
+    row.className = "file-row";
+
+    const label = document.createElement("div");
+    label.className = "file-name";
+    const badge = item.protected ? " [SYSTEM]" : "";
+    label.innerText = (item.type === "folder" ? "📁 " : "📄 ") + name + badge;
+
+    label.onclick = () => {
+      if(!canAccessItem(item)){
+        notify("Administrator or Creator access required.", "System access denied");
+        return;
+      }
+      if(item.type === "folder"){
+        currentPath += name + "/";
+        loadExplorer();
+      } else {
+        openFile(name);
+      }
+    };
+
+    const actions = document.createElement("div");
+    actions.className = "file-actions";
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.textContent = "Rename";
+    renameBtn.onclick = () => renameEntry(name);
+    if(!canModifyItem(item)) renameBtn.disabled = true;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.onclick = () => deleteEntry(name);
+    if(!canModifyItem(item)) deleteBtn.disabled = true;
+
+    actions.appendChild(renameBtn);
+    actions.appendChild(deleteBtn);
+    row.appendChild(label);
+    row.appendChild(actions);
+    list.appendChild(row);
+  }
+}
+
+function renderCalendar(){
+  const weekdayHost = document.getElementById("calendarWeekdays");
+  const grid = document.getElementById("calendarGrid");
+  const label = document.getElementById("calendarMonthLabel");
+  const todayLabel = document.getElementById("calendarTodayLabel");
+  const selectedLabel = document.getElementById("calendarSelectedLabel");
+  const selectedMeta = document.getElementById("calendarSelectedMeta");
+  const weekdays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const viewYear = calendarViewDate.getFullYear();
+  const viewMonth = calendarViewDate.getMonth();
+  const today = new Date();
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  weekdayHost.innerHTML = "";
+  grid.innerHTML = "";
+
+  weekdays.forEach(day => {
+    const cell = document.createElement("div");
+    cell.className = "calendar-weekday";
+    cell.textContent = day;
+    weekdayHost.appendChild(cell);
+  });
+
+  label.textContent = calendarViewDate.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
+
+  todayLabel.textContent = "Today is " + today.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  for(let i = 0; i < 42; i++){
+    let dayNumber;
+    let cellDate;
+    let otherMonth = false;
+
+    if(i < startOffset){
+      dayNumber = daysInPrevMonth - startOffset + i + 1;
+      cellDate = new Date(viewYear, viewMonth - 1, dayNumber);
+      otherMonth = true;
+    } else if(i >= startOffset + daysInMonth){
+      dayNumber = i - (startOffset + daysInMonth) + 1;
+      cellDate = new Date(viewYear, viewMonth + 1, dayNumber);
+      otherMonth = true;
+    } else {
+      dayNumber = i - startOffset + 1;
+      cellDate = new Date(viewYear, viewMonth, dayNumber);
+    }
+
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-day";
+
+    if(otherMonth) cell.classList.add("other-month");
+    if(isSameDate(cellDate, today)) cell.classList.add("current-day");
+    if(isSameDate(cellDate, selectedCalendarDate)) cell.classList.add("selected-day");
+
+    cell.innerHTML = `
+      <span class="calendar-day-number">${dayNumber}</span>
+      <span class="calendar-day-label">${cellDate.toLocaleDateString(undefined,{ weekday:"short" })}</span>
+    `;
+
+    cell.onclick = () => {
+      selectedCalendarDate = new Date(cellDate);
+      renderCalendar();
+    };
+
+    grid.appendChild(cell);
+  }
+
+  selectedLabel.textContent = selectedCalendarDate.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  selectedMeta.textContent =
+    "RedOs marks this as " +
+    (isSameDate(selectedCalendarDate, today) ? "the current live system date." : "a stored date in the timeline.");
+}
+
+function changeCalendarMonth(delta){
+  calendarViewDate = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + delta, 1);
+  renderCalendar();
+}
+
+function jumpCalendarToday(){
+  const today = new Date();
+  calendarViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  selectedCalendarDate = new Date(today);
+  renderCalendar();
+}
+
+function isSameDate(a, b){
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+}
+
+let createType = null;
+
+function newFolder(){
+  createType = "folder";
+  openCreate("New Folder");
+}
+
+function newFile(){
+  createType = "file";
+  openCreate("New File");
+}
+
+function openCreate(title){
+  document.getElementById("createTitle").innerText = title;
+  document.getElementById("createName").value = "";
+  document.getElementById("createModal").style.display = "flex";
+}
+
+function closeCreate(){
+  document.getElementById("createModal").style.display = "none";
+}
+
+function confirmCreate(){
+  const name = document.getElementById("createName").value.trim();
+  if(!name) return;
+
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const folder = getFolder(fs, currentPath);
+  if(folder.protected && getCurrentRole() !== "creator"){
+    notify("Only Creator may write into protected system folders.", "Protected");
+    return;
+  }
+
+  if(createType === "folder"){
+    folder.children[name] = { type:"folder", children:{} };
+  } else {
+    folder.children[name] = { type:"file", content:"" };
+  }
+
+  localStorage.setItem("redos_fs", JSON.stringify(fs));
+  closeCreate();
+  loadExplorer();
+  notify(`${createType === "folder" ? "Folder" : "File"} created.`, name);
+}
+
+
+
+
+
+
+document.documentElement.style.setProperty(
+  "--mainColor",
+  localStorage.getItem("redos_color") || "#ff2a2a"
+);
+
+// ========= STATE =========
+if(!localStorage.getItem("redos_recovery_pin")){
+  localStorage.setItem("redos_recovery_pin","9999");
+}
+
+let currentScreen="time";
+let topWindowZ = 1100;
+const APP_DEFS = {
+  search: { label:"Search", short:"F", action:"openSearch", description:"Find apps fast", terms:"search find apps lookup" },
+  terminal: { label:"Terminal", short:"T", action:"showHack", description:"Command console with built-in help", terms:"terminal command console shell" },
+  notes: { label:"Notes", short:"N", action:"openNotes", description:"Private saved notes for each account", terms:"notes memo journal writing text" },
+  browser: { label:"Browser", short:"B", action:"openBrowser", description:"Fake web with RedOs search pages", terms:"browser web search pages signals vault" },
+  music: { label:"Music", short:"M", action:"openMusic", description:"Visualizer and playlist for RedOs tracks", terms:"music audio player playlist visualizer" },
+  paint: { label:"Paint", short:"P", action:"openPaint", description:"Freehand sketch board with saved canvas", terms:"paint draw canvas sketch art" },
+  gallery: { label:"Gallery", short:"G", action:"openGallery", description:"View saved Paint frames and RedOs visuals", terms:"gallery images paint saved frames artwork" },
+  calculator: { label:"Calculator", short:"K", action:"openCalculator", description:"Fast arithmetic inside the shell", terms:"calculator math utility numbers compute" },
+  recycle: { label:"Recycle Bin", short:"Y", action:"openRecycleBin", description:"Restore or remove deleted files", terms:"recycle bin trash restore deleted files" },
+  store: { label:"App Store", short:"A", action:"openStore", description:"Install extra shell modules", terms:"store install modules app pack" },
+  missions: { label:"Missions", short:"Q", action:"openMissions", description:"Checklist of RedOs objectives", terms:"missions tasks objectives quest checklist" },
+  control: { label:"Control", short:"O", action:"openControlCenter", description:"Quick shell toggles and atmosphere control", terms:"control center toggles shell atmosphere" },
+  archive: { label:"Archive", short:"R", action:"openArchive", description:"Recovered RedOs lore and logs", terms:"archive files lore recovered log vault" },
+  settings: { label:"Settings", short:"S", action:"showSettings", description:"Theme, password and recovery tools", terms:"settings preferences account role" },
+  calendar: { label:"Calendar", short:"C", action:"openCalendar", description:"Month grid with live date tracking", terms:"calendar date month schedule" },
+  explorer: { label:"Explorer", short:"E", action:"openExplorer", description:"Create and browse RedOs files", terms:"explorer files folders browser" },
+  diagnostics: { label:"Diagnostics", short:"D", action:"showDiagnostics", description:"Creator-only system telemetry", terms:"diagnostics creator telemetry system hidden", creatorOnly:true }
+};
+const DEFAULT_START_ORDER = ["terminal","notes","browser","music","paint","gallery","calculator","recycle","store","missions","control","archive","settings","calendar","explorer"];
+const DEFAULT_TASKBAR_APPS = ["search","explorer","settings"];
+const DEFAULT_DESKTOP_ICONS = {
+  terminal: { x: 22, y: 18 },
+  explorer: { x: 22, y: 128 },
+  settings: { x: 22, y: 238 },
+  notes: { x: 22, y: 348 },
+  browser: { x: 22, y: 458 },
+  music: { x: 22, y: 568 },
+  paint: { x: 132, y: 18 },
+  gallery: { x: 132, y: 128 },
+  calculator: { x: 132, y: 238 },
+  recycle: { x: 132, y: 348 },
+  missions: { x: 132, y: 458 },
+  archive: { x: 132, y: 568 },
+  calendar: { x: 132, y: 678 },
+  diagnostics: { x: 132, y: 788 }
+};
+let startAppOrder = loadStoredList("redos_start_order", DEFAULT_START_ORDER);
+let taskbarAppOrder = loadStoredList("redos_taskbar_apps", DEFAULT_TASKBAR_APPS);
+if(!localStorage.getItem("redos_taskbar_migrated_v3")){
+  taskbarAppOrder = taskbarAppOrder.filter(appId => appId !== "calendar" && appId !== "terminal");
+  localStorage.setItem("redos_taskbar_migrated_v3","true");
+}
+let holdTimer = null;
+let dragSession = null;
+let sleepReady = false;
+let suppressLaunchUntil = 0;
+let desktopIconsState = loadStoredMap("redos_desktop_icons", DEFAULT_DESKTOP_ICONS);
+let desktopDrag = null;
+let currentAccountId = null;
+let notesState = [];
+let currentNoteId = null;
+let contextMenuState = null;
+let browserPage = "home";
+let currentTrackId = "track_1";
+let musicPlaying = false;
+let paintState = { drawing:false, color:"#ff2a2a", size:4 };
+let missionState = {};
+let storeState = {};
+let controlState = {};
+let gallerySelection = "paint_latest";
+let calculatorExpression = "";
+let audioCtx = null;
+let musicTimer = null;
+let musicMaster = null;
+let musicStep = 0;
+let notificationHistoryState = [];
+let browserTabsState = [];
+let activeBrowserTabId = null;
+let browserBookmarks = [];
+let bootStyle = "normal";
+let eventTimer = null;
+let secretState = {};
+let orbitAnimationFrame = null;
+let taskSwitcherIndex = 0;
+let taskSwitcherVisible = false;
+let zChordArmed = false;
+
+const APP_WINDOW_IDS = {
+  terminal: "hackApp",
+  notes: "notesApp",
+  browser: "browserApp",
+  music: "musicApp",
+  paint: "paintApp",
+  gallery: "galleryApp",
+  calculator: "calculatorApp",
+  recycle: "recycleApp",
+  store: "storeApp",
+  missions: "missionsApp",
+  control: "controlApp",
+  archive: "archiveApp",
+  settings: "settingsApp",
+  calendar: "calendarApp",
+  explorer: "explorer",
+  diagnostics: "diagnosticsApp"
+};
+
+const APP_CLOSE_ACTIONS = {
+  terminal: "closeHack",
+  notes: "closeNotes",
+  browser: "closeBrowser",
+  music: "closeMusic",
+  paint: "closePaint",
+  gallery: "closeGallery",
+  calculator: "closeCalculator",
+  recycle: "closeRecycleBin",
+  store: "closeStore",
+  missions: "closeMissions",
+  control: "closeControlCenter",
+  archive: "closeArchive",
+  settings: "closeSettings",
+  calendar: "closeCalendar",
+  explorer: "closeExplorer",
+  diagnostics: "closeDiagnostics"
+};
+
+function getPaintTitle(){
+  return localStorage.getItem("redos_paint_title") || "Latest Paint Save";
+}
+
+if(!localStorage.getItem("redos_notes_rollout_v1")){
+  if(!startAppOrder.includes("notes")){
+    const explorerIndex = startAppOrder.indexOf("explorer");
+    if(explorerIndex === -1) startAppOrder.push("notes");
+    else startAppOrder.splice(explorerIndex, 0, "notes");
+  }
+  if(!desktopIconsState.notes){
+    desktopIconsState.notes = { ...DEFAULT_DESKTOP_ICONS.notes };
+  }
+  saveAppPreferences();
+  localStorage.setItem("redos_notes_rollout_v1","true");
+}
+if(!localStorage.getItem("redos_apps_rollout_v3")){
+  ["browser","music","paint","gallery","calculator","recycle","store","missions","control","archive"].forEach((appId)=>{
+    if(!startAppOrder.includes(appId)){
+      const settingsIndex = startAppOrder.indexOf("settings");
+      if(settingsIndex === -1) startAppOrder.push(appId);
+      else startAppOrder.splice(settingsIndex, 0, appId);
+    }
+    if(DEFAULT_DESKTOP_ICONS[appId] && !desktopIconsState[appId]){
+      desktopIconsState[appId] = { ...DEFAULT_DESKTOP_ICONS[appId] };
+    }
+  });
+  saveAppPreferences();
+  localStorage.setItem("redos_apps_rollout_v3","true");
+}
+
+function loadStoredList(key, fallback){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(key) || "null");
+    if(Array.isArray(parsed) && parsed.length) return parsed;
+  }catch{}
+  return [...fallback];
+}
+
+function loadStoredMap(key, fallback){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(key) || "null");
+    if(parsed && typeof parsed === "object") return parsed;
+  }catch{}
+  return JSON.parse(JSON.stringify(fallback));
+}
+
+function defaultAccount(username="Red", role="user"){
+  return {
+    id: `acct_${Date.now()}`,
+    username,
+    password: "3049",
+    avatar: "#800",
+    recoveryPin: "9999",
+    role,
+    creatorAccess: false
+  };
+}
+
+function getAccounts(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem("redos_accounts") || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  }catch{
+    return [];
+  }
+}
+
+function saveAccounts(accounts){
+  localStorage.setItem("redos_accounts", JSON.stringify(accounts));
+}
+
+function getCurrentAccount(){
+  const accounts = getAccounts();
+  return accounts.find(account => account.id === currentAccountId) || accounts[0] || null;
+}
+
+function updateCurrentAccount(patch){
+  const accounts = getAccounts();
+  const index = accounts.findIndex(account => account.id === currentAccountId);
+  if(index === -1) return;
+  accounts[index] = { ...accounts[index], ...patch };
+  saveAccounts(accounts);
+}
+
+function ensureAccountsState(){
+  let accounts = getAccounts();
+  if(accounts.length){
+    accounts = accounts.map(account => ({
+      ...account,
+      role: account.role === "creator" ? "admin" : account.role,
+      creatorAccess: false
+    }));
+    saveAccounts(accounts);
+    currentAccountId = localStorage.getItem("redos_current_account") || accounts[0].id;
+    localStorage.setItem("redos_current_account", currentAccountId);
+    syncLegacyProfileFromAccount();
+  } else {
+    currentAccountId = null;
+    localStorage.removeItem("redos_current_account");
+  }
+}
+
+function syncLegacyProfileFromAccount(){
+  const account = getCurrentAccount();
+  if(!account) return;
+  localStorage.setItem("redos_username", account.username);
+  localStorage.setItem("redos_password", account.password);
+  localStorage.setItem("redos_avatar", account.avatar);
+  localStorage.setItem("redos_recovery_pin", account.recoveryPin);
+  localStorage.setItem("redos_role", account.role);
+  localStorage.setItem("redos_creator_access", account.creatorAccess ? "true" : "false");
+}
+
+function defaultNotes(){
+  return [{
+    id: `note_${Date.now()}`,
+    title: "Welcome to Notes",
+    content: "This workspace saves notes per account.\n\nUse it for clues, passwords, lore ideas, or whatever RedOs needs next.",
+    updatedAt: Date.now()
+  }];
+}
+
+function getNotesStorageKey(){
+  const account = getCurrentAccount();
+  return `redos_notes_${account ? account.id : "guest"}`;
+}
+
+function loadNotes(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(getNotesStorageKey()) || "null");
+    if(Array.isArray(parsed) && parsed.length) return parsed;
+  }catch{}
+  return defaultNotes();
+}
+
+function saveNotes(notes){
+  localStorage.setItem(getNotesStorageKey(), JSON.stringify(notes));
+}
+
+function ensureNotesState(){
+  notesState = loadNotes();
+  if(!notesState.some(note => note.id === currentNoteId)){
+    currentNoteId = notesState[0]?.id || null;
+  }
+}
+
+function saveAppPreferences(){
+  localStorage.setItem("redos_start_order", JSON.stringify(startAppOrder));
+  localStorage.setItem("redos_taskbar_apps", JSON.stringify(taskbarAppOrder));
+  localStorage.setItem("redos_desktop_icons", JSON.stringify(desktopIconsState));
+}
+
+function getRecycleBin(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem("redos_recycle_bin") || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  }catch{
+    return [];
+  }
+}
+
+function saveRecycleBin(items){
+  localStorage.setItem("redos_recycle_bin", JSON.stringify(items));
+}
+
+function isWindowRunning(windowId){
+  const windowEl = document.getElementById(windowId);
+  if(!windowEl) return false;
+  return windowEl.style.display === "flex" || windowEl.classList.contains("minimized");
+}
+
+function animateTaskbarOrbits(timestamp){
+  document.querySelectorAll(".icon-orbit-dot").forEach(dot => {
+    const host = dot.parentElement;
+    if(!host) return;
+    const visible = host.classList.contains("running") || host.classList.contains("active");
+    if(!visible){
+      dot.style.opacity = "0";
+      return;
+    }
+    const speed = host.classList.contains("active") ? 0.0064 : 0.0046;
+    const angle = timestamp * speed;
+    const radius = host.classList.contains("taskbar-mini") ? 13 : 14;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    dot.style.opacity = "1";
+    dot.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+  });
+  orbitAnimationFrame = requestAnimationFrame(animateTaskbarOrbits);
+}
+
+// ========= FULLSCREEN =========
+function goFullscreen(){if(document.documentElement.requestFullscreen){document.documentElement.requestFullscreen();}}
+document.addEventListener("keydown",goFullscreen,{once:true});
+document.addEventListener("click",goFullscreen,{once:true});
+document.addEventListener("contextmenu", (e)=>e.preventDefault());
+document.addEventListener("mousedown", (event)=>{
+  if(!event.target.closest("#contextMenu")) hideContextMenu();
+  if(!event.target.closest("#notificationCenter") && !event.target.closest("#notificationBell")){
+    document.getElementById("notificationCenter").classList.remove("show");
+  }
+});
+document.addEventListener("click", (event)=>{
+  const button = event.target.closest("#contextMenu [data-menu-index]");
+  if(!button || !contextMenuState) return;
+  const action = contextMenuState.items[Number(button.dataset.menuIndex)]?.action;
+  hideContextMenu();
+  if(typeof action === "function") action();
+});
+document.addEventListener("keydown", (event)=>{
+  const target = event.target;
+  const typingTarget = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+  const key = event.key.toLowerCase();
+  if(!typingTarget){
+    if(zChordArmed && key === "f4"){
+      event.preventDefault();
+      closeFocusedWindow();
+      zChordArmed = false;
+      return;
+    }
+    if(zChordArmed && event.key === "Tab"){
+      event.preventDefault();
+      cycleTaskSwitcher(event.shiftKey ? -1 : 1);
+      zChordArmed = false;
+      return;
+    }
+    if(key === "z"){
+      zChordArmed = true;
+      return;
+    }
+    if(zChordArmed && handleZChord(key)){
+      event.preventDefault();
+      zChordArmed = false;
+      return;
+    }
+  }
+  if(event.altKey && event.key.toLowerCase() === "tab"){
+    event.preventDefault();
+    if(!taskSwitcherVisible) showTaskSwitcher();
+    else {
+      taskSwitcherIndex += event.shiftKey ? -1 : 1;
+      renderTaskSwitcher();
+    }
+  } else if(taskSwitcherVisible && event.key === "Escape"){
+    event.preventDefault();
+    hideTaskSwitcher(false);
+  }
+});
+document.addEventListener("keyup", (event)=>{
+  if(event.key.toLowerCase() === "z") zChordArmed = false;
+  if(taskSwitcherVisible && event.key === "Alt"){
+    event.preventDefault();
+    hideTaskSwitcher(true);
+  }
+});
+
+// ========= TIME =========
+function updateTime(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,"0");
+  const m = String(now.getMinutes()).padStart(2,"0");
+  const s = String(now.getSeconds()).padStart(2,"0");
+
+  // Time screen
+  if(document.getElementById("time")){
+    document.getElementById("time").textContent = `${h}:${m}:${s}`;
+  }
+  if(document.getElementById("date")){
+    document.getElementById("date").textContent = currentScreen === "time"
+      ? getBootMessage()
+      : now.toLocaleDateString(undefined,{
+          weekday:"long", year:"numeric", month:"long", day:"numeric"
+        });
+  }
+
+  // Taskbar
+  if(document.getElementById("taskClock")){
+    document.getElementById("taskClock").textContent = `${h}:${m}`;
+  }
+  if(document.getElementById("taskDate")){
+    document.getElementById("taskDate").textContent =
+      now.toLocaleDateString(undefined,{ weekday:"long", day:"numeric", month:"short" });
+  }
+  if(document.getElementById("calendarClockStatus")){
+    document.getElementById("calendarClockStatus").textContent = `${h}:${m}:${s}`;
+  }
+}
+
+
+
+// ========= BINARY =========
+const binary=document.getElementById("binaryWindow");
+for(let i=0;i<40;i++){const span=document.createElement("span");span.style.left=`${i*2.5}vw`;span.style.animationDelay=`${Math.random()*8}s`;span.textContent=Math.random()>0.5?"0":"1";binary.appendChild(span);}
+
+// ========= SCREENS =========
+function hideAll(){
+  [
+  "timeScreen",
+  "loginScreen",
+  "forgotScreen",
+  "createAccountScreen",
+  "hackScreen",
+  "helpScreen",
+  "settingsScreen"
+]
+.forEach(id=>document.getElementById(id).classList.add("hidden"));
+}
+function clearActiveDots(){document.querySelectorAll("#iconSearch, #iconHack, #iconCalendar, #iconExplorer, #iconSettings").forEach(icon=>icon.classList.remove("active"));}
+function activateIcon(id){const icon = document.getElementById(id); if(icon) icon.classList.add("active");}
+function deactivateIcon(id){const icon = document.getElementById(id); if(icon) icon.classList.remove("active");}
+function hideWindows(){
+  ["explorer","calendarApp","createModal","hackApp","notesApp","browserApp","musicApp","paintApp","galleryApp","calculatorApp","recycleApp","storeApp","missionsApp","controlApp","archiveApp","settingsApp","diagnosticsApp"].forEach(id=>{
+    document.getElementById(id).style.display = "none";
+  });
+  renderTaskbarApps();
+}
+function showDesktop(){document.getElementById("desktop").classList.add("show");}
+function hideDesktop(){document.getElementById("desktop").classList.remove("show");}
+function closeStartMenu(){
+  document.getElementById("startMenu").style.display="none";
+  document.getElementById("startButton").classList.remove("active");
+  deactivateIcon("search");
+}
+function goDesktop(){hideAll();hideWindows();showDesktop();closeStartMenu();clearActiveDots();currentScreen="desktop";}
+function focusWindow(id){
+  const windowEl = document.getElementById(id);
+  if(!windowEl) return;
+  topWindowZ += 1;
+  windowEl.style.zIndex = topWindowZ;
+}
+function showHack(){hideAll();showDesktop();closeStartMenu();restoreWindowIfNeeded("hackApp");document.getElementById("hackApp").style.display="flex";renderTaskbarApps();focusWindow("hackApp");activateIcon("iconHack");currentScreen="hack";}
+function closeHack(){document.getElementById("hackApp").style.display="none";deactivateIcon("iconHack");renderTaskbarApps();}
+function showSettings(){hideAll();showDesktop();closeStartMenu();syncSettingsWindow();restoreWindowIfNeeded("settingsApp");document.getElementById("settingsApp").style.display="flex";renderTaskbarApps();focusWindow("settingsApp");activateIcon("iconSettings");currentScreen="settings";}
+function closeSettings(){document.getElementById("settingsApp").style.display="none";deactivateIcon("iconSettings");renderTaskbarApps();}
+function showDiagnostics(){
+  if(!isCreatorRole()){
+    notify("Creator access required.", "Diagnostics locked");
+    return;
+  }
+  hideAll();
+  showDesktop();
+  closeStartMenu();
+  renderDiagnostics();
+  restoreWindowIfNeeded("diagnosticsApp");
+  document.getElementById("diagnosticsApp").style.display="flex";
+  renderTaskbarApps();
+  focusWindow("diagnosticsApp");
+  currentScreen="diagnostics";
+}
+function closeDiagnostics(){document.getElementById("diagnosticsApp").style.display="none";renderTaskbarApps();}
+function openSearch(){
+  const startMenu = document.getElementById("startMenu");
+  startMenu.style.display = "flex";
+  document.getElementById("startButton").classList.add("active");
+  activateIcon("search");
+  filterApps();
+  document.getElementById("startSearchInput").focus();
+}
+
+function populateAccountSelect(){
+  const select = document.getElementById("accountSelect");
+  const accounts = getAccounts();
+  if(!select) return;
+  select.innerHTML = accounts.map(account => `
+    <option value="${account.id}">${account.username} (${account.role.toUpperCase()})</option>
+  `).join("");
+  select.value = currentAccountId;
+}
+
+function switchLoginAccount(){
+  currentAccountId = document.getElementById("accountSelect").value;
+  localStorage.setItem("redos_current_account", currentAccountId);
+  syncLegacyProfileFromAccount();
+  currentNoteId = null;
+  loadProfile();
+  resetLoginFields();
+}
+
+function goToCreateAccount(){
+  hideAll();
+  hideDesktop();
+  closeStartMenu();
+  document.getElementById("createAccountScreen").classList.remove("hidden");
+  document.getElementById("createAccountMsg").innerText = "";
+}
+
+function cancelCreateAccount(){
+  goToLogin();
+}
+
+let exitCleanupDone = false;
+
+function cleanupEphemeralAccount(){
+  if(exitCleanupDone) return;
+  const account = getCurrentAccount();
+  if(!account || !account.deleteOnExit) return;
+
+  exitCleanupDone = true;
+  localStorage.removeItem(`redos_notes_${account.id}`);
+  const accounts = getAccounts().filter(item => item.id !== account.id);
+  saveAccounts(accounts);
+  currentAccountId = accounts[0]?.id || null;
+  if(currentAccountId) localStorage.setItem("redos_current_account", currentAccountId);
+  else localStorage.removeItem("redos_current_account");
+}
+
+function createAccount(){
+  const username = document.getElementById("createUserName").value.trim();
+  const password = document.getElementById("createUserPass").value.trim();
+  const recoveryPin = document.getElementById("createUserPin").value.trim();
+  const avatar = document.getElementById("createUserAvatar").value;
+  const msg = document.getElementById("createAccountMsg");
+  const accounts = getAccounts();
+  const deleteOnExit = username.toLowerCase().endsWith(".delete");
+
+  if(!username || !password || recoveryPin.length < 4){
+    msg.innerText = "Fill every field and use a 4+ digit recovery PIN.";
+    return;
+  }
+  if(accounts.some(account => account.username.toLowerCase() === username.toLowerCase())){
+    msg.innerText = "That username already exists.";
+    return;
+  }
+
+  const account = {
+    id: `acct_${Date.now()}`,
+    username,
+    password,
+    avatar,
+    recoveryPin,
+    role: "user",
+    creatorAccess: false,
+    deleteOnExit
+  };
+
+  accounts.push(account);
+  saveAccounts(accounts);
+  currentAccountId = account.id;
+  localStorage.setItem("redos_current_account", currentAccountId);
+  syncLegacyProfileFromAccount();
+  loadProfile();
+  populateAccountSelect();
+  notify(
+    deleteOnExit
+      ? "Temporary account created. It will be removed when this session ends."
+      : "New account created.",
+    "Accounts"
+  );
+  goToLogin();
+}
+function filterApps(){
+  const query = document.getElementById("startSearchInput").value.trim().toLowerCase();
+  document.querySelectorAll(".startApp").forEach(app => {
+    const terms = app.dataset.app || "";
+    const text = app.innerText.toLowerCase();
+    const visible = !query || terms.includes(query) || text.includes(query);
+    app.classList.toggle("hidden-app", !visible);
+  });
+}
+
+function renderTaskbarApps(){
+  const host = document.getElementById("taskbarApps");
+  host.innerHTML = "";
+  const runningAppIds = Object.entries(APP_WINDOW_IDS)
+    .filter(([, windowId]) => isWindowRunning(windowId))
+    .map(([appId]) => appId);
+  const visibleApps = [...new Set([...taskbarAppOrder, ...runningAppIds])];
+  visibleApps.forEach(appId => {
+    const app = APP_DEFS[appId];
+    if(!app || (app.creatorOnly && !isCreatorRole())) return;
+    const button = document.createElement("div");
+    button.className = "icon taskbar-app";
+    button.title = app.label;
+    button.textContent = app.short;
+    button.dataset.appId = appId;
+    button.dataset.taskbarApp = appId;
+    if(runningAppIds.includes(appId)) button.classList.add("running");
+    button.onclick = () => launchApp(appId);
+    button.oncontextmenu = (event)=>{
+      event.preventDefault();
+      showContextMenu(event.clientX, event.clientY, [
+        { label:`Open ${app.label}`, action:()=>launchApp(appId) },
+        { label:"Drop shortcut on desktop", action:()=>dropAppToDesktopCenter(appId) },
+        { label:"Unpin from taskbar", action:()=>toggleTaskbarPin(appId) }
+      ]);
+    };
+    attachHoldBehavior(button, appId, "taskbar");
+    button.insertAdjacentHTML("beforeend", `<span class="icon-orbit-dot"></span>`);
+    host.appendChild(button);
+  });
+}
+
+function renderStartApps(){
+  const host = document.getElementById("startAppsContainer");
+  host.innerHTML = "";
+  startAppOrder.forEach(appId => {
+    const app = APP_DEFS[appId];
+    if(!app || (app.creatorOnly && !isCreatorRole())) return;
+    const item = document.createElement("div");
+    item.className = "startApp";
+    item.dataset.app = app.terms;
+    item.dataset.appId = appId;
+    item.innerHTML = `<strong>${app.label}</strong><span>${app.description}</span>`;
+    item.onclick = () => launchApp(appId);
+    attachHoldBehavior(item, appId, "start");
+    host.appendChild(item);
+  });
+  filterApps();
+}
+
+function renderDesktopIcons(){
+  const host = document.getElementById("desktopIcons");
+  const desktop = document.getElementById("desktop");
+  host.innerHTML = "";
+  desktop.oncontextmenu = (event)=>{
+    if(event.target.closest(".desktop-icon")) return;
+    if(event.target.closest(".app, .taskbar, .startMenu")) return;
+    event.preventDefault();
+    showContextMenu(event.clientX, event.clientY, [
+      { label:"Refresh desktop", action:()=>renderDesktopIcons() },
+      { label:"Organize icons", action:()=>organizeDesktopIcons() },
+      { label:"Open Notes", action:()=>openNotes() }
+    ]);
+  };
+  Object.entries(desktopIconsState).forEach(([appId, pos]) => {
+    const app = APP_DEFS[appId];
+    if(!app || (app.creatorOnly && !isCreatorRole())) return;
+    const icon = document.createElement("div");
+    icon.className = "desktop-icon";
+    icon.dataset.appId = appId;
+    icon.style.left = `${pos.x}px`;
+    icon.style.top = `${pos.y}px`;
+    icon.innerHTML = `
+      <div class="desktop-icon-badge">${app.short}</div>
+      <div class="desktop-icon-label">${app.label}</div>
+    `;
+    icon.ondblclick = () => launchApp(appId);
+    icon.onmousedown = (event) => startDesktopIconDrag(event, appId, icon);
+    icon.oncontextmenu = (event)=>{
+      event.preventDefault();
+      openDesktopIconMenu(event, appId);
+    };
+    host.appendChild(icon);
+  });
+}
+
+function openDesktopIconMenu(event, appId){
+  const isPinned = taskbarAppOrder.includes(appId);
+  showContextMenu(event.clientX, event.clientY, [
+    { label:`Open ${APP_DEFS[appId]?.label || "App"}`, action:()=>launchApp(appId) },
+    { label:isPinned ? "Unpin from taskbar" : "Pin to taskbar", action:()=>toggleTaskbarPin(appId) },
+    { label:"Remove desktop shortcut", action:()=>removeDesktopShortcut(appId) }
+  ]);
+}
+
+function showContextMenu(x, y, items){
+  const menu = document.getElementById("contextMenu");
+  menu.innerHTML = items.map((item, index)=>`
+    <button type="button" data-menu-index="${index}">${escapeHtml(item.label)}</button>
+    ${index === items.length - 1 ? "" : ""}
+  `).join("");
+  contextMenuState = { items };
+  menu.style.left = `${Math.min(x, window.innerWidth - 210)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - ((items.length * 42) + 24))}px`;
+  menu.classList.add("show");
+}
+
+function hideContextMenu(){
+  const menu = document.getElementById("contextMenu");
+  menu.classList.remove("show");
+  menu.innerHTML = "";
+  contextMenuState = null;
+}
+
+function toggleTaskbarPin(appId){
+  if(taskbarAppOrder.includes(appId)){
+    taskbarAppOrder = taskbarAppOrder.filter(item => item !== appId);
+    notify("App unpinned from taskbar.", APP_DEFS[appId]?.label || "Desktop");
+  } else {
+    taskbarAppOrder.push(appId);
+    completeMission("pin_app");
+    notify("App pinned to taskbar.", APP_DEFS[appId]?.label || "Desktop");
+  }
+  saveAppPreferences();
+  renderTaskbarApps();
+  hideContextMenu();
+}
+
+function removeDesktopShortcut(appId){
+  delete desktopIconsState[appId];
+  saveAppPreferences();
+  renderDesktopIcons();
+  hideContextMenu();
+  notify("Desktop shortcut removed.", APP_DEFS[appId]?.label || "Desktop");
+}
+
+function organizeDesktopIcons(){
+  let row = 0;
+  Object.keys(desktopIconsState).forEach(appId => {
+    desktopIconsState[appId] = { x: 22, y: 18 + (row * 110) };
+    row += 1;
+  });
+  saveAppPreferences();
+  renderDesktopIcons();
+  hideContextMenu();
+  notify("Desktop icons organized.", "Desktop");
+}
+
+function addDesktopShortcut(appId, clientX, clientY){
+  const desktop = document.getElementById("desktopIcons");
+  const rect = desktop.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width - 96, clientX - rect.left - 44));
+  const y = Math.max(0, Math.min(rect.height - 96, clientY - rect.top - 44));
+  desktopIconsState[appId] = { x, y };
+  saveAppPreferences();
+  renderDesktopIcons();
+  completeMission("drop_desktop");
+  notify("App dropped onto desktop.", APP_DEFS[appId]?.label || "Desktop");
+}
+
+function dropAppToDesktopCenter(appId){
+  const desktop = document.getElementById("desktopIcons");
+  const rect = desktop.getBoundingClientRect();
+  addDesktopShortcut(appId, rect.left + (rect.width / 2), rect.top + (rect.height / 2));
+  hideContextMenu();
+}
+
+function startDesktopIconDrag(event, appId, icon){
+  if(event.button !== 0) return;
+  desktopDrag = {
+    appId,
+    icon,
+    offsetX: event.clientX - icon.offsetLeft,
+    offsetY: event.clientY - icon.offsetTop
+  };
+  document.addEventListener("mousemove", handleDesktopIconDrag);
+  document.addEventListener("mouseup", finishDesktopIconDrag, { once:true });
+}
+
+function handleDesktopIconDrag(event){
+  if(!desktopDrag) return;
+  const nextX = Math.max(0, event.clientX - desktopDrag.offsetX - 20);
+  const nextY = Math.max(0, event.clientY - desktopDrag.offsetY - 20);
+  desktopDrag.icon.style.left = `${nextX}px`;
+  desktopDrag.icon.style.top = `${nextY}px`;
+}
+
+function finishDesktopIconDrag(){
+  if(!desktopDrag) return;
+  document.removeEventListener("mousemove", handleDesktopIconDrag);
+  desktopIconsState[desktopDrag.appId] = {
+    x: parseInt(desktopDrag.icon.style.left, 10) || 0,
+    y: parseInt(desktopDrag.icon.style.top, 10) || 0
+  };
+  saveAppPreferences();
+  desktopDrag = null;
+}
+
+function launchApp(appId){
+  if(Date.now() < suppressLaunchUntil) return;
+  const app = APP_DEFS[appId];
+  if(app && typeof window[app.action] === "function"){
+    playUiSound("open");
+    window[app.action]();
+  }
+}
+
+function getRunningApps(){
+  return Object.entries(APP_WINDOW_IDS)
+    .filter(([, windowId]) => isWindowRunning(windowId))
+    .map(([appId]) => appId)
+    .filter(appId => APP_DEFS[appId]);
+}
+
+function getFocusedRunningAppId(){
+  let bestAppId = null;
+  let bestZ = -Infinity;
+  Object.entries(APP_WINDOW_IDS).forEach(([appId, windowId]) => {
+    const windowEl = document.getElementById(windowId);
+    if(!windowEl || !isWindowRunning(windowId)) return;
+    const z = parseInt(windowEl.style.zIndex || "0", 10) || 0;
+    if(z >= bestZ){
+      bestZ = z;
+      bestAppId = appId;
+    }
+  });
+  return bestAppId;
+}
+
+function closeFocusedWindow(){
+  const appId = getFocusedRunningAppId();
+  if(!appId) return false;
+  const closeAction = APP_CLOSE_ACTIONS[appId];
+  if(closeAction && typeof window[closeAction] === "function"){
+    window[closeAction]();
+    notify(`${APP_DEFS[appId]?.label || "Window"} closed.`, "Keyboard");
+    return true;
+  }
+  return false;
+}
+
+function renderTaskSwitcher(){
+  const apps = getRunningApps();
+  const host = document.getElementById("taskSwitcherGrid");
+  if(!apps.length){
+    host.innerHTML = `<div class="task-switcher-card active"><strong>No running apps</strong><span>Open a few windows first.</span></div>`;
+    return;
+  }
+  taskSwitcherIndex = ((taskSwitcherIndex % apps.length) + apps.length) % apps.length;
+  host.innerHTML = apps.map((appId, index) => `
+    <div class="task-switcher-card ${index === taskSwitcherIndex ? "active" : ""}">
+      <strong>${escapeHtml(APP_DEFS[appId].label)}</strong>
+      <span>${escapeHtml(APP_DEFS[appId].description)}</span>
+    </div>
+  `).join("");
+}
+
+function showTaskSwitcher(){
+  const apps = getRunningApps();
+  if(!apps.length) return;
+  taskSwitcherVisible = true;
+  document.getElementById("taskSwitcher").classList.add("show");
+  renderTaskSwitcher();
+}
+
+function hideTaskSwitcher(activateSelected = false){
+  const apps = getRunningApps();
+  if(activateSelected && apps.length){
+    launchApp(apps[taskSwitcherIndex % apps.length]);
+  }
+  taskSwitcherVisible = false;
+  document.getElementById("taskSwitcher").classList.remove("show");
+}
+
+function cycleTaskSwitcher(direction = 1){
+  const apps = getRunningApps();
+  if(!apps.length) return;
+  if(!taskSwitcherVisible){
+    taskSwitcherIndex = direction < 0 ? apps.length - 1 : 0;
+    showTaskSwitcher();
+    return;
+  }
+  taskSwitcherIndex += direction;
+  renderTaskSwitcher();
+}
+
+function handleZChord(key){
+  const shortcuts = {
+    w: ()=>showHack(),
+    e: ()=>openExplorer(),
+    s: ()=>showSettings(),
+    c: ()=>openCalendar(),
+    n: ()=>openNotes(),
+    b: ()=>openBrowser(),
+    m: ()=>openMusic(),
+    g: ()=>openGallery(),
+    p: ()=>openPaint(),
+    k: ()=>openCalculator(),
+    r: ()=>openRecycleBin(),
+    a: ()=>openArchive(),
+    o: ()=>openControlCenter(),
+    i: ()=>openMissions(),
+    f: ()=>toggleNotificationCenter(),
+    t: ()=>cycleTaskSwitcher(1)
+  };
+  const action = shortcuts[key];
+  if(!action) return false;
+  action();
+  notify(`Shortcut Z + ${key.toUpperCase()} executed.`, "Keyboard");
+  return true;
+}
+
+function minimizeWindow(id){
+  document.getElementById(id).classList.add("minimized");
+  renderTaskbarApps();
+  playUiSound("close");
+  notify("Window minimized.", id.replace("App",""));
+}
+
+function toggleMaximize(id){
+  const windowEl = document.getElementById(id);
+  if(windowEl.classList.contains("maximized")){
+    windowEl.classList.remove("maximized");
+    windowEl.classList.remove("window-snap-left","window-snap-right");
+    notify("Window restored.", id.replace("App",""));
+  } else {
+    windowEl.classList.remove("minimized");
+    windowEl.classList.remove("window-snap-left","window-snap-right");
+    windowEl.classList.add("maximized");
+    focusWindow(id);
+    notify("Window maximized.", id.replace("App",""));
+  }
+}
+
+function restoreWindowIfNeeded(id){
+  const windowEl = document.getElementById(id);
+  if(windowEl){
+    windowEl.classList.remove("minimized");
+    renderTaskbarApps();
+  }
+}
+
+function notify(message, title="RedOs"){
+  const host = document.getElementById("notifications");
+  const note = document.createElement("div");
+  note.className = "notification";
+  note.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+  notificationHistoryState.unshift({
+    title,
+    message,
+    time: new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
+  });
+  saveNotificationHistory();
+  renderNotificationCenter();
+  playUiSound("notify");
+  host.appendChild(note);
+  requestAnimationFrame(() => note.classList.add("show"));
+  setTimeout(() => {
+    note.classList.remove("show");
+    setTimeout(() => note.remove(), 260);
+  }, 2600);
+}
+
+function renderDiagnostics(){
+  const fs = JSON.parse(localStorage.getItem("redos_fs"));
+  const rootChildren = Object.keys((fs && fs["/"] && fs["/"].children) || {});
+  const diagnostics = [
+    { title:"Access Layer", body:`Role: ${getCurrentRole().toUpperCase()}\nPrivileged: ${isPrivilegedRole() ? "YES" : "NO"}` },
+    { title:"Desktop Shell", body:`Start apps: ${startAppOrder.length}\nTaskbar pins: ${taskbarAppOrder.length}\nDesktop icons: ${Object.keys(desktopIconsState).length}` },
+    { title:"Filesystem", body:`Root entries: ${rootChildren.length}\nSystem protected: ${rootChildren.includes("System") ? "YES" : "NO"}` },
+    { title:"Runtime", body:`Current screen: ${currentScreen}\nPath: ${currentPath}\nClock: ${new Date().toLocaleTimeString()}` }
+  ];
+  const host = document.getElementById("diagnosticsGrid");
+  host.innerHTML = diagnostics.map(item => `
+    <div class="diagnostics-card">
+      <strong>${item.title}</strong>
+      <span>${item.body}</span>
+    </div>
+  `).join("");
+}
+
+function clearActiveDots(){
+  document.querySelectorAll(".taskbar-app").forEach(icon=>icon.classList.remove("active"));
+}
+
+function activateIcon(id){
+  const normalized = String(id).replace(/^icon/, "").toLowerCase() === "hack"
+    ? "terminal"
+    : String(id).replace(/^icon/, "").toLowerCase();
+  const icon = document.querySelector(`[data-taskbar-app="${normalized}"]`);
+  if(icon) icon.classList.add("active");
+}
+
+function deactivateIcon(id){
+  const normalized = String(id).replace(/^icon/, "").toLowerCase() === "hack"
+    ? "terminal"
+    : String(id).replace(/^icon/, "").toLowerCase();
+  const icon = document.querySelector(`[data-taskbar-app="${normalized}"]`);
+  if(icon) icon.classList.remove("active");
+}
+
+function attachHoldBehavior(element, appId, source){
+  element.onmousedown = (event)=>{
+    if(event.button !== 0) return;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(()=>{
+      startDragSession(element, appId, source, event);
+    }, 4000);
+  };
+  element.onmouseup = cancelHoldTimer;
+  element.onmouseleave = cancelHoldTimer;
+}
+
+function cancelHoldTimer(){
+  clearTimeout(holdTimer);
+}
+
+function startDragSession(element, appId, source, event){
+  dragSession = {
+    appId,
+    source,
+    originElement: element,
+    currentDropTarget: null
+  };
+  element.classList.add("drag-origin");
+  showDragToast();
+
+  const ghost = element.cloneNode(true);
+  ghost.classList.add("drag-ghost");
+  ghost.style.width = `${element.offsetWidth}px`;
+  ghost.style.height = `${element.offsetHeight}px`;
+  document.body.appendChild(ghost);
+  dragSession.ghost = ghost;
+  updateDragGhost(event.clientX, event.clientY);
+  document.addEventListener("mousemove", handleDragMove);
+  document.addEventListener("mouseup", finishDragSession, { once:true });
+}
+
+function updateDragGhost(x, y){
+  if(!dragSession || !dragSession.ghost) return;
+  dragSession.ghost.style.left = `${x + 12}px`;
+  dragSession.ghost.style.top = `${y + 12}px`;
+}
+
+function handleDragMove(event){
+  updateDragGhost(event.clientX, event.clientY);
+  dragSession.currentDropTarget = document.elementFromPoint(event.clientX, event.clientY);
+  const desktop = document.getElementById("desktop");
+  const onDesktop = dragSession.currentDropTarget && dragSession.currentDropTarget.closest("#desktop, #desktopIcons, .desktop-icon");
+  desktop.classList.toggle("drag-target", !!onDesktop);
+}
+
+function finishDragSession(event){
+  clearTimeout(holdTimer);
+  document.removeEventListener("mousemove", handleDragMove);
+  if(!dragSession) return;
+  suppressLaunchUntil = Date.now() + 250;
+
+  const dropTarget = dragSession.currentDropTarget || document.elementFromPoint(event.clientX, event.clientY);
+  document.getElementById("desktop").classList.remove("drag-target");
+  applyDrop(dragSession.appId, dragSession.source, dropTarget, event);
+
+  if(dragSession.originElement) dragSession.originElement.classList.remove("drag-origin");
+  if(dragSession.ghost) dragSession.ghost.remove();
+  dragSession = null;
+  hideDragToast();
+}
+
+function showDragToast(){
+  const toast = document.getElementById("dragToast");
+  toast.classList.remove("hide");
+  toast.classList.remove("show");
+  void toast.offsetWidth;
+  toast.classList.add("show");
+}
+
+function hideDragToast(){
+  const toast = document.getElementById("dragToast");
+  toast.classList.add("hide");
+  setTimeout(()=>{
+    toast.classList.remove("show");
+    toast.classList.remove("hide");
+  }, 980);
+}
+
+function applyDrop(appId, source, dropTarget, event){
+  const taskbarArea = dropTarget && dropTarget.closest("#taskbarApps, [data-taskbar-app]");
+  const startArea = dropTarget && dropTarget.closest("#startAppsContainer, .startApp");
+  const desktopArea = dropTarget && dropTarget.closest("#desktop, #desktopIcons, .desktop-icon");
+  let changed = false;
+
+  if(source === "start" && taskbarArea){
+    moveToTaskbar(appId, dropTarget.closest("[data-taskbar-app]")?.dataset.taskbarApp || null);
+    changed = true;
+  } else if((source === "start" || source === "taskbar") && desktopArea){
+    addDesktopShortcut(appId, event.clientX, event.clientY);
+    changed = true;
+  } else if(startArea){
+    reorderList(startAppOrder, appId, dropTarget.closest(".startApp")?.dataset.appId || null);
+    changed = true;
+  } else if(source === "taskbar" && taskbarArea){
+    reorderList(taskbarAppOrder, appId, dropTarget.closest("[data-taskbar-app]")?.dataset.taskbarApp || null);
+    changed = true;
+  }
+
+  if(changed){
+    saveAppPreferences();
+    renderTaskbarApps();
+    renderStartApps();
+    renderDesktopIcons();
+  }
+}
+
+function moveToTaskbar(appId, beforeAppId){
+  if(!taskbarAppOrder.includes(appId)) taskbarAppOrder.push(appId);
+  reorderList(taskbarAppOrder, appId, beforeAppId);
+}
+
+function reorderList(list, appId, beforeAppId){
+  if(beforeAppId === appId) return;
+  const currentIndex = list.indexOf(appId);
+  if(currentIndex !== -1) list.splice(currentIndex, 1);
+  const targetIndex = beforeAppId ? list.indexOf(beforeAppId) : list.length;
+  list.splice(targetIndex === -1 ? list.length : targetIndex, 0, appId);
+}
+
+// ========= LOGIN =========
+function goToLogin(){
+  if(!getAccounts().length){
+    goToCreateAccount();
+    return;
+  }
+  hideAll();
+  hideWindows();
+  hideDesktop();
+  closeStartMenu();
+  populateAccountSelect();
+  loadProfile();
+  document.getElementById("loginScreen").classList.remove("hidden");
+  resetLoginFields(); // 🔥 THIS fixes the “password already filled” bug
+}
+
+function unlockOS(){goDesktop();document.getElementById("taskbar").classList.add("show");playUiSound("open");startSecretEvents();}
+function resetLoginFields(){
+  const lock = document.getElementById("lockInput");
+  const pin  = document.getElementById("pinInput");
+  const msg  = document.getElementById("lockMsg");
+  const pmsg = document.getElementById("pinMsg");
+
+  if(lock) lock.value = "";
+  if(pin) pin.value = "";
+  if(msg) msg.innerText = "";
+  if(pmsg) pmsg.innerText = "";
+}
+
+
+
+
+function attachLoginListeners(){
+  document.addEventListener("keydown", onBootKey);
+  document.addEventListener("dblclick", onBootClick);
+}
+
+function onBootKey(e){
+  if(e.code === "Space"){
+    detachLoginListeners();
+    goToLogin();
+  }
+}
+
+function onBootClick(){
+  detachLoginListeners();
+  goToLogin();
+}
+
+function detachLoginListeners(){
+  document.removeEventListener("keydown", onBootKey);
+  document.removeEventListener("dblclick", onBootClick);
+}
+
+
+function goToForgot(){
+  hideAll();
+  document.getElementById("forgotScreen").classList.remove("hidden");
+}
+
+function verifyPin(){
+  const account = getCurrentAccount();
+  const input = document.getElementById("pinInput").value.trim();
+  const savedPin = account ? account.recoveryPin : localStorage.getItem("redos_recovery_pin");
+
+  if(input === savedPin){
+    updateCurrentAccount({ password: "3049" });
+    syncLegacyProfileFromAccount();
+    document.getElementById("pinMsg").innerText =
+      "Password reset to default (3049). Go back and login.";
+  } else {
+    document.getElementById("pinMsg").innerText = "Wrong PIN.";
+    document.getElementById("pinInput").value = "";
+  }
+}
+
+
+function unlock(){
+  const account = getCurrentAccount();
+  const input=document.getElementById("lockInput").value;
+  const savedPass=account ? account.password : localStorage.getItem("redos_password");
+  if(input===savedPass){
+    document.getElementById("lockMsg").innerText="";
+    unlockOS();
+  }else{
+    document.getElementById("lockMsg").innerText="Wrong password!";
+    document.getElementById("lockInput").value="";
+  }
+}
+
+// ========= START MENU =========
+function toggleStartMenu(){
+  const sm=document.getElementById("startMenu");
+  sm.style.display=(sm.style.display==="flex")?"none":"flex";
+  playUiSound("click");
+  document.getElementById("startButton").classList.toggle("active", sm.style.display==="flex");
+  if(sm.style.display==="flex") activateIcon("search");
+  else deactivateIcon("search");
+  if(sm.style.display==="flex"){
+    filterApps();
+    document.getElementById("startSearchInput").focus();
+  }
+}
+function shutdownOS(){
+  cleanupEphemeralAccount();
+  hideAll();
+  hideWindows();
+  hideDesktop();
+  closeStartMenu();
+  clearActiveDots();
+  document.getElementById("taskbar").classList.remove("show");
+
+  const shutdown = document.getElementById("shutdownScreen");
+  shutdown.querySelector(".shutdown-text").innerText = "Shutting down...";
+  shutdown.classList.remove("hidden");
+
+  setTimeout(()=>{
+    window.open('', '_self');
+    window.close();
+  }, 12000);
+}
+
+
+
+
+// ========= USER PROFILE =========
+function loadProfile(){
+  const account = getCurrentAccount();
+  const username = account ? account.username : (localStorage.getItem("redos_username") || "Red");
+  const avatar = account ? account.avatar : (localStorage.getItem("redos_avatar") || "#800");
+  const role = account ? account.role : (localStorage.getItem("redos_role") || "user");
+  document.getElementById("profileName").innerText=username;
+  document.getElementById("profileAvatar").style.background=avatar;
+  document.getElementById("profileRole").innerText=role.toUpperCase();
+  document.getElementById("lockName").innerText = username;
+  document.getElementById("lockRole").innerText = role.toUpperCase();
+  document.getElementById("lockAvatar").style.background = avatar;
+}
+ensureAccountsState();
+loadShellAppState();
+renderTaskbarApps();
+renderStartApps();
+renderDesktopIcons();
+loadProfile();
+syncSettingsWindow();
+applyControlCenterState();
+updatePaintBrush();
+renderNotificationCenter();
+window.addEventListener("beforeunload", cleanupEphemeralAccount);
+if(!orbitAnimationFrame){
+  orbitAnimationFrame = requestAnimationFrame(animateTaskbarOrbits);
+}
+
+// ========= SLEEP / WAKE =========
+function sleepOS() {
+  localStorage.setItem("redos_lastScreen", currentScreen);
+  hideAll();
+  hideDesktop();
+  document.getElementById("sleepScreen").classList.remove("hidden");
+  closeStartMenu();
+  clearActiveDots();
+  sleepReady = false;
+
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  }
+
+  setTimeout(()=>{
+    sleepReady = true;
+    document.addEventListener("keydown", wakeOS, { once: true });
+    document.addEventListener("click", wakeOS, { once: true });
+  }, 700);
+}
+
+function wakeOS() {
+  if(!sleepReady){
+    return;
+  }
+  document.getElementById("sleepScreen").classList.add("hidden");
+  const last = localStorage.getItem("redos_lastScreen") || "desktop";
+
+  if (last === "hack") showHack();
+  else if (last === "settings") showSettings();
+  else goDesktop();
+
+  if (document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen();
+  }
+}
+
+// ========= COMMANDS =========
+function runCommand(){
+  const cmd=document.getElementById("cmdInput").value.trim().toLowerCase();
+  const box=document.getElementById("hackBox");
+  const fill=document.getElementById("fill");
+
+  if(cmd==="help"){
+    box.innerHTML="> Commands:<br>> open notes<br>> open browser<br>> open music<br>> open paint<br>> open gallery<br>> open calculator<br>> open recycle<br>> open store<br>> open missions<br>> open control<br>> open archive<br>> open explorer<br>> open settings<br>> open calendar<br>> trace signal<br>> unlock vault<br>> open deepvault<br>> whoami<br>> role<br>> date<br>> shutdown<br>> restart<br>> sleep<br>> ls<br>> clear";
+  } else if(cmd==="terminal"){
+    box.innerHTML="> Terminal online...<br>> loading shell tools<br>> ready.";
+    fill.style.width="100%";
+  } else if(cmd==="open notes"){
+    openNotes();
+    box.innerHTML="> Notes workspace opened.";
+  } else if(cmd==="open browser"){
+    openBrowser();
+    box.innerHTML="> Browser opened.";
+  } else if(cmd==="open music"){
+    openMusic();
+    box.innerHTML="> Music deck online.";
+  } else if(cmd==="open paint"){
+    openPaint();
+    box.innerHTML="> Paint canvas opened.";
+  } else if(cmd==="open gallery"){
+    openGallery();
+    box.innerHTML="> Gallery opened.";
+  } else if(cmd==="open calculator"){
+    openCalculator();
+    box.innerHTML="> Calculator online.";
+  } else if(cmd==="open recycle"){
+    openRecycleBin();
+    box.innerHTML="> Recycle Bin opened.";
+  } else if(cmd==="open store"){
+    openStore();
+    box.innerHTML="> App Store opened.";
+  } else if(cmd==="open missions"){
+    openMissions();
+    box.innerHTML="> Missions board opened.";
+  } else if(cmd==="open control"){
+    openControlCenter();
+    box.innerHTML="> Control Center opened.";
+  } else if(cmd==="open archive"){
+    openArchive();
+    box.innerHTML="> Archive mounted.";
+  } else if(cmd==="open explorer"){
+    openExplorer();
+    box.innerHTML="> Explorer opened.";
+  } else if(cmd==="open settings"){
+    showSettings();
+    box.innerHTML="> Settings opened.";
+  } else if(cmd==="open calendar"){
+    openCalendar();
+    box.innerHTML="> Calendar opened.";
+  } else if(cmd==="open system"){
+    if(!isPrivilegedRole()){
+      box.innerHTML="> Access denied. Admin or Creator required.";
+    } else {
+      currentPath = "/System/";
+      openExplorer();
+      box.innerHTML="> System folder mounted.";
+    }
+  } else if(cmd==="open diagnostics"){
+    if(!isCreatorRole()){
+      box.innerHTML="> Access denied. Creator required.";
+    } else {
+      showDiagnostics();
+      box.innerHTML="> Diagnostics console online.";
+    }
+  } else if(cmd==="trace signal"){
+    secretState.signalTraced = true;
+    localStorage.setItem("redos_secret_state", JSON.stringify(secretState));
+    box.innerHTML="> Signal trace locked. A hidden route is now visible.";
+    notify("A hidden signal route was traced.", "Terminal");
+  } else if(cmd==="unlock vault"){
+    if(!secretState.signalTraced){
+      box.innerHTML="> No signal trace present.";
+    } else {
+      secretState.vaultUnlocked = true;
+      localStorage.setItem("redos_secret_state", JSON.stringify(secretState));
+      if(!browserBookmarks.includes("vault")) browserBookmarks.push("vault");
+      localStorage.setItem("redos_browser_bookmarks", JSON.stringify(browserBookmarks));
+      box.innerHTML="> Deep vault unlocked.";
+      notify("Deep vault content has been revealed.", "Terminal");
+    }
+  } else if(cmd==="open deepvault"){
+    if(!secretState.vaultUnlocked){
+      box.innerHTML="> Vault remains locked.";
+    } else {
+      openArchive();
+      box.innerHTML="> Deep vault mounted inside Archive.";
+    }
+  } else if(cmd==="whoami"){
+    box.innerHTML="> " + (localStorage.getItem("redos_username") || "Red");
+  } else if(cmd==="role"){
+    box.innerHTML="> Role: " + (localStorage.getItem("redos_role") || "user").toUpperCase();
+  } else if(cmd==="date"){
+    box.innerHTML="> " + new Date().toString();
+  } else if(cmd==="shutdown"){
+    box.innerHTML="> Initiating shutdown...";
+    setTimeout(shutdownOS, 350);
+  } else if(cmd==="restart"){
+    box.innerHTML="> Restarting RedOs...";
+    setTimeout(restartOS, 350);
+  } else if(cmd==="sleep"){
+    box.innerHTML="> Entering sleep mode...";
+    setTimeout(sleepOS, 350);
+  } else if(cmd==="ls"){
+    box.innerHTML="> Documents<br>> Downloads<br>> Pictures<br>> RedOs Files" + (secretState.vaultUnlocked ? "<br>> deepvault" : "");
+  } else if(cmd.startsWith("cd ")){
+    box.innerHTML="> Changed directory to " + cmd.split(" ")[1];
+  } else if(cmd.startsWith("cat ")){
+    box.innerHTML="> Opening file: " + cmd.split(" ")[1];
+  } else if(cmd==="clear"){
+    box.innerHTML="> Cleared.";
+  } else {
+    box.innerHTML="> Command not found.";
+  }
+}
+
+// ========= SETTINGS FEATURES =========
+function changeColor(){
+  const color=(document.getElementById("colorSelectWindow") || document.getElementById("colorSelect")).value;
+  document.documentElement.style.setProperty("--mainColor", color);
+  localStorage.setItem("redos_color", color);
+  syncSettingsWindow();
+}
+
+function setPassword(){
+  const newPass=(document.getElementById("passInputWindow") || document.getElementById("passInput")).value.trim();
+  if(newPass.length<4){
+    notify("Password must be at least 4 characters.", "Password");
+    return;
+  }
+  updateCurrentAccount({ password: newPass });
+  syncLegacyProfileFromAccount();
+  syncSettingsWindow();
+  notify("Password changed.", "Settings");
+}
+
+function recoverPassword(){
+  updateCurrentAccount({ password:"3049" });
+  syncLegacyProfileFromAccount();
+  syncSettingsWindow();
+  notify("Password recovered to default.", "Settings");
+}
+
+function syncSettingsWindow(){
+  const color = localStorage.getItem("redos_color") || "#ff2a2a";
+  const colorSelect = document.getElementById("colorSelectWindow");
+  const passMask = document.getElementById("currentPassWindow");
+  if(colorSelect) colorSelect.value = color;
+  if(passMask) passMask.innerText = "••••";
+}
+
+function changeColorFromWindow(){ changeColor(); }
+function setPasswordFromWindow(){ setPassword(); }
+function recoverPasswordFromWindow(){ recoverPassword(); }
+
+function syncSettingsWindow(){
+  const color = localStorage.getItem("redos_color") || "#ff2a2a";
+  const colorSelect = document.getElementById("colorSelectWindow");
+  const passMask = document.getElementById("currentPassWindow");
+  const roleSelect = document.getElementById("roleSelectWindow");
+  const creatorAccess = isCreatorRole();
+  const role = getCurrentRole();
+  if(colorSelect) colorSelect.value = color;
+  if(passMask) passMask.innerText = "••••";
+  if(roleSelect){
+    const creatorOption = roleSelect.querySelector('option[value="creator"]');
+    if(creatorOption) creatorOption.disabled = !creatorAccess;
+    roleSelect.value = creatorAccess ? role : (role === "creator" ? "admin" : role);
+  }
+  const roleNote = document.getElementById("roleNote");
+  if(roleNote){
+    roleNote.innerText = creatorAccess
+      ? "Creator is unlocked for the builders of this RedOs install."
+      : "Creator is reserved for the builders of this RedOs install.";
+  }
+  loadProfile();
+}
+
+function changeRole(){
+  const selectedRole = document.getElementById("roleSelectWindow").value;
+  const nextRole = selectedRole === "creator" ? "admin" : selectedRole;
+  updateCurrentAccount({
+    role: nextRole,
+    creatorAccess: false
+  });
+  syncLegacyProfileFromAccount();
+  syncSettingsWindow();
+  renderStartApps();
+  renderDesktopIcons();
+  notify(`Role switched to ${nextRole.toUpperCase()}.`, "Access profile");
+}
+
+function syncSettingsWindow(){
+  const color = localStorage.getItem("redos_color") || "#ff2a2a";
+  const colorSelect = document.getElementById("colorSelectWindow");
+  const passMask = document.getElementById("currentPassWindow");
+  const roleSelect = document.getElementById("roleSelectWindow");
+  const creatorAccess = isCreatorRole();
+  const role = getCurrentRole();
+  const account = getCurrentAccount();
+  if(colorSelect) colorSelect.value = color;
+  if(passMask) passMask.innerText = "••••";
+  if(roleSelect){
+    const creatorOption = roleSelect.querySelector('option[value="creator"]');
+    if(creatorOption) creatorOption.disabled = !creatorAccess;
+    roleSelect.value = creatorAccess ? role : (role === "creator" ? "admin" : role);
+  }
+  const roleNote = document.getElementById("roleNote");
+  if(roleNote){
+    roleNote.innerText = creatorAccess
+      ? "Creator is unlocked for the builders of this RedOs install."
+      : "Creator is reserved for the builders of this RedOs install.";
+  }
+  const profileNameInput = document.getElementById("profileNameInput");
+  const profileAvatarInput = document.getElementById("profileAvatarInput");
+  const profileBioInput = document.getElementById("profileBioInput");
+  const bootStyleSelect = document.getElementById("bootStyleSelect");
+  if(profileNameInput) profileNameInput.value = account?.username || "";
+  if(profileAvatarInput) profileAvatarInput.value = account?.avatar || "#800";
+  if(profileBioInput) profileBioInput.value = localStorage.getItem("redos_profile_bio") || "";
+  if(bootStyleSelect) bootStyleSelect.value = bootStyle;
+  loadProfile();
+}
+
+function saveProfileEditor(){
+  const nextName = document.getElementById("profileNameInput").value.trim();
+  const nextAvatar = document.getElementById("profileAvatarInput").value;
+  const nextBio = document.getElementById("profileBioInput").value.trim();
+  if(nextName){
+    updateCurrentAccount({ username: nextName, avatar: nextAvatar });
+    syncLegacyProfileFromAccount();
+  }
+  localStorage.setItem("redos_profile_bio", nextBio);
+  syncSettingsWindow();
+  populateAccountSelect();
+  notify("Profile updated.", "Settings");
+}
+
+function saveBootStyle(){
+  bootStyle = document.getElementById("bootStyleSelect").value;
+  localStorage.setItem("redos_boot_style", bootStyle);
+  notify(`Boot style set to ${bootStyle}.`, "Boot");
+}
+
+function getBootMessage(){
+  const messages = {
+    normal: "Loading...",
+    creator: "Creator boot sequence armed.",
+    recovery: "Recovery layer standing by.",
+    glitch: "Signal corruption detected. Stabilizing shell..."
+  };
+  return messages[bootStyle] || messages.normal;
+}
+
+function renderBootVariant(){
+  const dateLabel = document.getElementById("date");
+  if(!dateLabel) return;
+  dateLabel.textContent = getBootMessage();
+  if(bootStyle === "glitch"){
+    document.getElementById("eventOverlay").classList.add("flash");
+  }
+}
+
+function maybeTriggerSecretEvent(){
+  if(document.getElementById("timeScreen").classList.contains("hidden") === false) return;
+  if(currentScreen === "sleep") return;
+  if(Math.random() > 0.3) return;
+  const events = [
+    { title:"Signal Echo", message:"A faint packet drifted across the shell." },
+    { title:"Ghost Process", message:"A hidden process flashed, then vanished." },
+    { title:"Red Pulse", message:"The background glow intensified for a second." }
+  ];
+  const event = events[Math.floor(Math.random() * events.length)];
+  document.getElementById("eventOverlay").classList.add("flash");
+  setTimeout(()=>document.getElementById("eventOverlay").classList.remove("flash"), 600);
+  notify(event.message, event.title);
+}
+
+function startSecretEvents(){
+  if(eventTimer) clearInterval(eventTimer);
+  eventTimer = setInterval(maybeTriggerSecretEvent, storeState.quest_feed ? 32000 : 52000);
+}
+
+function openExplorer(){
+  const exp = document.getElementById("explorer");
+  exp.style.display = "flex";
+  showDesktop();
+  closeStartMenu();
+  loadExplorer();
+  focusWindow("explorer");
+  activateIcon("iconExplorer");
+}
+
+function openCalendar(){
+  const calendar = document.getElementById("calendarApp");
+  calendar.style.display = "flex";
+  showDesktop();
+  closeStartMenu();
+  renderCalendar();
+  focusWindow("calendarApp");
+  activateIcon("iconCalendar");
+}
+
+// ========= WINDOW DRAG =========
+let dragState = null;
+
+document.querySelectorAll(".app").forEach(app => {
+  app.addEventListener("mousedown", ()=>focusWindow(app.id));
+});
+
+document.querySelectorAll(".app-header.drag").forEach(header => {
+  header.addEventListener("mousedown", (e)=>{
+    const windowEl = header.parentElement;
+    focusWindow(windowEl.id);
+    dragState = {
+      windowEl,
+      offsetX: e.clientX - windowEl.offsetLeft,
+      offsetY: e.clientY - windowEl.offsetTop
+    };
+  });
+});
+
+document.addEventListener("mousemove", (e)=>{
+  if(!dragState) return;
+  dragState.windowEl.classList.remove("window-snap-left","window-snap-right");
+  dragState.windowEl.style.left = (e.clientX - dragState.offsetX) + "px";
+  dragState.windowEl.style.top = (e.clientY - dragState.offsetY) + "px";
+});
+
+document.addEventListener("mouseup", (e)=>{
+  if(dragState){
+    const windowEl = dragState.windowEl;
+    if(e.clientX < 28){
+      windowEl.classList.remove("maximized");
+      windowEl.classList.add("window-snap-left");
+      notify("Window snapped left.", windowEl.id.replace("App",""));
+    } else if(e.clientX > window.innerWidth - 28){
+      windowEl.classList.remove("maximized");
+      windowEl.classList.add("window-snap-right");
+      notify("Window snapped right.", windowEl.id.replace("App",""));
+    } else if(e.clientY < 20){
+      windowEl.classList.remove("window-snap-left","window-snap-right");
+      windowEl.classList.add("maximized");
+      notify("Window snapped full.", windowEl.id.replace("App",""));
+    }
+  }
+  dragState=null;
+});
+
+// ========= START LOGIC =========
+// remove time screen after first login
+function initialStart(){
+  hideAll();
+  hideWindows();
+  hideDesktop();
+  clearActiveDots();
+
+  document.getElementById("shutdownScreen").classList.add("hidden");
+  document.getElementById("sleepScreen").classList.add("hidden");
+  document.getElementById("taskbar").classList.remove("show");
+  closeStartMenu();
+
+  document.getElementById("timeScreen").classList.remove("hidden");
+  currentScreen = "time";
+  renderBootVariant();
+
+  attachLoginListeners(); // 🔥 THIS IS THE KEY
+}
+
+
+
+initialStart();
+updateTime();
+setInterval(updateTime, 1000);
+renderCalendar();
+function setRecoveryPin(){
+  const pin = (document.getElementById("pinSetInputWindow") || document.getElementById("pinSetInput")).value.trim();
+  if(pin.length < 4){
+    notify("PIN must be at least 4 digits.", "Recovery PIN");
+    return;
+  }
+  updateCurrentAccount({ recoveryPin: pin });
+  syncLegacyProfileFromAccount();
+  notify("Recovery PIN updated.", "Settings");
+}
+
+function setRecoveryPinFromWindow(){ setRecoveryPin(); }
+
+function factoryReset(){
+  const confirmed = confirm("Factory reset RedOs? This will erase passwords, app layout, colors, files, and preferences.");
+  if(!confirmed) return;
+
+  [
+    "redos_color",
+    "redos_password",
+    "redos_recovery_pin",
+    "redos_role",
+    "redos_creator_access",
+    "redos_username",
+    "redos_avatar",
+    "redos_accounts",
+    "redos_current_account",
+    "redos_fs",
+    "redos_lastScreen",
+    "redos_start_order",
+    "redos_taskbar_apps",
+    "redos_desktop_icons",
+    "redos_notes_rollout_v1",
+    "redos_apps_rollout_v1",
+    "redos_apps_rollout_v2",
+    "redos_apps_rollout_v3",
+    "redos_browser_page",
+    "redos_music_track",
+    "redos_music_playing",
+    "redos_paint_canvas",
+    "redos_paint_title",
+    "redos_calculator_expr",
+    "redos_store",
+    "redos_missions",
+    "redos_control",
+    "redos_notifications",
+    "redos_recycle_bin",
+    "redos_browser_tabs",
+    "redos_browser_bookmarks",
+    "redos_browser_active_tab",
+    "redos_boot_style",
+    "redos_profile_bio",
+    "redos_secret_state",
+    "redos_taskbar_migrated_v2",
+    "redos_taskbar_migrated_v3"
+  ].forEach(key => localStorage.removeItem(key));
+  Object.keys(localStorage)
+    .filter(key => key.startsWith("redos_notes_"))
+    .forEach(key => localStorage.removeItem(key));
+
+  location.reload();
+}
+
+function restartOS(){
+  hideAll();
+  hideWindows();
+  hideDesktop();
+  closeStartMenu();
+  clearActiveDots();
+  document.getElementById("taskbar").classList.remove("show");
+
+  const shutdown = document.getElementById("shutdownScreen");
+  shutdown.querySelector(".shutdown-text").innerText = "Restarting...";
+  shutdown.classList.remove("hidden");
+
+  // Clear last state
+  localStorage.removeItem("redos_lastScreen");
+
+  setTimeout(()=>{
+    shutdown.classList.add("hidden");
+    initialStart(); // clean boot → time screen
+  }, 2500);
+}
+
+
+
+
+
+
+</script>
+</body>
+</html>
